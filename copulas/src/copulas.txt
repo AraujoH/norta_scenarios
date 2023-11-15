@@ -1,0 +1,20 @@
+CASE
+--------------------------------------------------------------------------------
+XXXXXXXXXXXXXXXXXXXX
+DATA TYPE           : load          # LOAD, SOLAR, WIND
+SCENARIO LENGTH     : 48
+SCENARIO PATHS      : 1000
+SCENARIO HOUR       : 14            # 0, 1, 2, ..., 23 
+SCENARIO DAY        : 29            # Format DD
+SCENARIO MONTH      : 08            # Format MM
+SCENARIO YEAR       : 2018          # Format YYY
+READ LOCALLY        : 0             # 0: Locally, 1: fetch from AWS bucket
+HISTORICAL LOAD     : ercot_BA_load_actuals_2018.h5
+FORECAST LOAD       : ercot_BA_load_forecast_day_ahead_2018.h5
+HISTORICAL SOLAR    : ercot_BA_solar_actuals_Existing_2018.h5
+FORECAST SOLAR DA   : ercot_BA_solar_forecast_day_ahead_existing_2018.h5
+FORECAST SOLAR 2DA  : ercot_BA_solar_forecast_2_day_ahead_existing_2018.h5
+HISTORICAL WIND     : ercot_BA_wind_actuals_Existing_2018.h5
+FORECAST WIND DA    : ercot_BA_wind_forecast_day_ahead_existing_2018.h5
+FORECAST WIND 2DA   : ercot_BA_wind_forecast_day_ahead_existing_2018.HSD
+WRITE PERCENTILE    : 1

@@ -43,25 +43,27 @@ function convert_hours_2018(data, is_actual = true)
 
     # Groups are set up. Carry out transformations
     if is_actual
-        data[group_1, :time_index] = data[group_1, :time_index] - Hour(6)
-        data[group_2, :time_index] = data[group_2, :time_index] - Hour(5)
-        data[group_3, :time_index] = data[group_3, :time_index] - Hour(6)
-        data[group_4, :time_index] = data[group_4, :time_index] - Hour(5)
-        data[group_5, :time_index] = data[group_5, :time_index] - Hour(6)
+        df = copy(data)
+        df[group_1, :time_index] = df[group_1, :time_index] - Hour(6)
+        df[group_2, :time_index] = df[group_2, :time_index] - Hour(5)
+        df[group_3, :time_index] = df[group_3, :time_index] - Hour(6)
+        df[group_4, :time_index] = df[group_4, :time_index] - Hour(5)
+        df[group_5, :time_index] = df[group_5, :time_index] - Hour(6)
     else
+        df = copy(data)
         # Forecast
-        data[group_1, :forecast_time] = data[group_1, :forecast_time] - Hour(6)
-        data[group_2, :forecast_time] = data[group_2, :forecast_time] - Hour(5)
-        data[group_3, :forecast_time] = data[group_3, :forecast_time] - Hour(6)
-        data[group_4, :forecast_time] = data[group_4, :forecast_time] - Hour(5)
-        data[group_5, :forecast_time] = data[group_5, :forecast_time] - Hour(6)
+        df[group_1, :forecast_time] = df[group_1, :forecast_time] - Hour(6)
+        df[group_2, :forecast_time] = df[group_2, :forecast_time] - Hour(5)
+        df[group_3, :forecast_time] = df[group_3, :forecast_time] - Hour(6)
+        df[group_4, :forecast_time] = df[group_4, :forecast_time] - Hour(5)
+        df[group_5, :forecast_time] = df[group_5, :forecast_time] - Hour(6)
 
         # Issue
-        data[group_1y, :issue_time] = data[group_1y, :issue_time] - Hour(6)
-        data[group_2y, :issue_time] = data[group_2y, :issue_time] - Hour(5)
-        data[group_3y, :issue_time] = data[group_3y, :issue_time] - Hour(6)
-        data[group_4y, :issue_time] = data[group_4y, :issue_time] - Hour(5)
-        data[group_5y, :issue_time] = data[group_5y, :issue_time] - Hour(6)
+        df[group_1y, :issue_time] = df[group_1y, :issue_time] - Hour(6)
+        df[group_2y, :issue_time] = df[group_2y, :issue_time] - Hour(5)
+        df[group_3y, :issue_time] = df[group_3y, :issue_time] - Hour(6)
+        df[group_4y, :issue_time] = df[group_4y, :issue_time] - Hour(5)
+        df[group_5y, :issue_time] = df[group_5y, :issue_time] - Hour(6)
     end
-    return(data)
+    return(df)
 end

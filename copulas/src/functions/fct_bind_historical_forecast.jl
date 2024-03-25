@@ -22,12 +22,25 @@ function bind_historical_forecast(
     if is_load
         ahead_factor = repeat(["two", "one"], size(forecast_da_data, 1) ÷ 2)
         forecast_da_data[!, :ahead_factor] = ahead_factor
+        load_da_data = filter(:ahead_factor => ==("one"), forecast_da_data)
+        load_2da_data = filter(:ahead_factor => ==("two"), forecast_da_data)
         full_data = leftjoin(forecast_da_data, historical_data, on=[:forecast_time => :time_index])
+
+        one_data = leftjoin(load_da_data, historical_data, on=[:forecast_time => :time_index])
+        two_data = leftjoin(load_2da_data, historical_data, on=[:forecast_time => :time_index])
+
+        return full_data
+
     else
         forecast_da_data[!, :ahead_factor] = repeat(["one"], size(forecast_da_data, 1))
         forecast_2da_data[!, :ahead_factor] = repeat(["two"], size(forecast_2da_data, 1))
         forecast = [forecast_da_data; forecast_2da_data]
         full_data = leftjoin(forecast, historical_data, on=[:forecast_time => :time_index])
+
+        one_data = leftjoin(forecast_da_data, historical_data, on=[:forecast_time => :time_index])
+        two_data = leftjoin(forecast_2da_data, historical_data, on=[:forecast_time => :time_index])
+
+        return full_data
     end
-    return full_data
+
 end

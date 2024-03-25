@@ -73,6 +73,7 @@ READ INPUT FILE
 =======================================================================#
 input_file_path = here("src\\copulas.txt")
 
+# XXX Needs to be updated to be a hardcoded instead of reading in a text file
 data_type,
 scenario_length,
 number_of_scenarios,
@@ -98,45 +99,45 @@ READ INPUT DATA: ARPA-E PERFORM PROJECT H5 FILES
 # cast values into a single dataframe.
 
 # Load data
-load_actuals = read_h5_file(here("data", historical_load), "load");
-load_forecast = read_h5_file(here("data", "ercot_BA_load_forecast_day_ahead_2018.h5"), "load", false);
+load_actuals_raw = read_h5_file(here("data", historical_load), "load");
+load_forecast_raw = read_h5_file(here("data", "ercot_BA_load_forecast_day_ahead_2018.h5"), "load", false);
 
 # Solar data
-solar_actuals = read_h5_file(here("data", "ercot_BA_solar_actuals_Existing_2018.h5"), "solar");
-solar_forecast_dayahead = read_h5_file(here("data", "ercot_BA_solar_forecast_day_ahead_existing_2018.h5"), "solar", false);
-solar_forecast_2dayahead = read_h5_file(here("data", "ercot_BA_solar_forecast_2_day_ahead_existing_2018.h5"), "solar", false);
+solar_actuals_raw = read_h5_file(here("data", "ercot_BA_solar_actuals_Existing_2018.h5"), "solar");
+solar_forecast_dayahead_raw = read_h5_file(here("data", "ercot_BA_solar_forecast_day_ahead_existing_2018.h5"), "solar", false);
+solar_forecast_2dayahead_raw = read_h5_file(here("data", "ercot_BA_solar_forecast_2_day_ahead_existing_2018.h5"), "solar", false);
 
 # Wind data
-wind_actuals = read_h5_file(here("data", "ercot_BA_wind_actuals_Existing_2018.h5"), "wind");
-wind_forecast_dayahead = read_h5_file(here("data", "ercot_BA_wind_forecast_day_ahead_existing_2018.h5"), "wind", false);
-wind_forecast_2dayahead = read_h5_file(here("data", "ercot_BA_wind_forecast_2_day_ahead_existing_2018.h5"), "wind", false);
+wind_actuals_raw = read_h5_file(here("data", "ercot_BA_wind_actuals_Existing_2018.h5"), "wind");
+wind_forecast_dayahead_raw = read_h5_file(here("data", "ercot_BA_wind_forecast_day_ahead_existing_2018.h5"), "wind", false);
+wind_forecast_2dayahead_raw = read_h5_file(here("data", "ercot_BA_wind_forecast_2_day_ahead_existing_2018.h5"), "wind", false);
 
 #=======================================================================
 Compute the hourly average for the actuals data
 =======================================================================#
 # Load
-aux = compute_hourly_average_actuals(load_actuals);
-load_actual_avg = DataFrame();
+aux = compute_hourly_average_actuals(load_actuals_raw);
+load_actual_avg_raw = DataFrame();
 time_index = aux[:, :Index];
 avg_actual = aux[:, :values_mean];
-load_actual_avg[!, :time_index] = time_index;
-load_actual_avg[!, :avg_actual] = avg_actual;
+load_actual_avg_raw[!, :time_index] = time_index;
+load_actual_avg_raw[!, :avg_actual] = avg_actual;
 
 # Solar
-aux = compute_hourly_average_actuals(solar_actuals);
+aux = compute_hourly_average_actuals(solar_actuals_raw);
 time_index = aux[:, :Index];
 avg_actual = aux[:, :values_mean];
-solar_actual_avg = DataFrame();
-solar_actual_avg[!, :time_index] = time_index;
-solar_actual_avg[!, :avg_actual] = avg_actual;
+solar_actual_avg_raw = DataFrame();
+solar_actual_avg_raw[!, :time_index] = time_index;
+solar_actual_avg_raw[!, :avg_actual] = avg_actual;
 
 # Wind
-aux = compute_hourly_average_actuals(wind_actuals);
+aux = compute_hourly_average_actuals(wind_actuals_raw);
 time_index = aux[:, :Index];
 avg_actual = aux[:, :values_mean];
-wind_actual_avg = DataFrame();
-wind_actual_avg[!, :time_index] = time_index;
-wind_actual_avg[!, :avg_actual] = avg_actual;
+wind_actual_avg_raw = DataFrame();
+wind_actual_avg_raw[!, :time_index] = time_index;
+wind_actual_avg_raw[!, :avg_actual] = avg_actual;
 
 #=======================================================================
 ADJUST THE TIME 
@@ -145,21 +146,21 @@ ADJUST THE TIME
 depending on daylight saving time =#
 
 # Load data
-load_actuals = convert_hours_2018(load_actuals);
-load_actual_avg = convert_hours_2018(load_actual_avg);
-load_forecast = convert_hours_2018(load_forecast, false);
+load_actuals = convert_hours_2018(load_actuals_raw);
+load_actual_avg = convert_hours_2018(load_actual_avg_raw);
+load_forecast = convert_hours_2018(load_forecast_raw, false);
 
 # Solar data
-solar_actuals = convert_hours_2018(solar_actuals);
-solar_actual_avg = convert_hours_2018(solar_actual_avg);
-solar_forecast_dayahead = convert_hours_2018(solar_forecast_dayahead, false);
-solar_forecast_2dayahead = convert_hours_2018(solar_forecast_2dayahead, false);
+solar_actuals = convert_hours_2018(solar_actuals_raw);
+solar_actual_avg = convert_hours_2018(solar_actual_avg_raw);
+solar_forecast_dayahead = convert_hours_2018(solar_forecast_dayahead_raw, false);
+solar_forecast_2dayahead = convert_hours_2018(solar_forecast_2dayahead_raw, false);
 
 # Wind data
-wind_actuals = convert_hours_2018(wind_actuals);
-wind_actual_avg = convert_hours_2018(wind_actual_avg);
-wind_forecast_dayahead = convert_hours_2018(wind_forecast_dayahead, false);
-wind_forecast_2dayahead = convert_hours_2018(wind_forecast_2dayahead, false);
+wind_actuals = convert_hours_2018(wind_actuals_raw);
+wind_actual_avg = convert_hours_2018(wind_actual_avg_raw);
+wind_forecast_dayahead = convert_hours_2018(wind_forecast_dayahead_raw, false);
+wind_forecast_2dayahead = convert_hours_2018(wind_forecast_2dayahead_raw, false);
 
 #=======================================================================
 BIND HOURLY HISTORICAL DATA WITH FORECAST DATA
@@ -183,6 +184,38 @@ wind_data = bind_historical_forecast(false,
     wind_actual_avg,
     wind_forecast_dayahead,
     wind_forecast_2dayahead);
+
+
+#=======================================================================
+DEFINE INDICES, DATETIMES, ISSUE SETS, ETC FOR USE AS INPUTS TO FUNCTIONS
+=======================================================================#
+# Set the date and time for the forecasts
+start_date = DateTime(string(scenario_year) * "-" * string(scenario_month) * "-" * string(scenario_day) * "T" * string(scenario_hour));
+
+wind_times = wind_data[!, [:forecast_time, :issue_time]]
+unique_wind = unique(wind_data[!,:issue_time])
+
+solar_times = solar_data[!, [:forecast_time, :issue_time]]
+unique_solar = unique(solar_times[!,:issue_time])
+
+load_times = load_data[!, [:forecast_time, :issue_time]]
+unique_load = unique(load_times[!,:issue_time])
+
+# XXX load data needs to be fixed, for now just use wind_times
+unique_wind == unique_load
+
+times = wind_times
+hour_index = findall(x -> x == start_date, times[!,:forecast_time])[1]
+hour_index = findall(x -> x == start_date, times)[1]
+current_issue = times[hour_index, :issue_time]
+# find index of current issue time
+issue_index = findall(x -> x == current_issue, unique_issue_times)[1]
+# find next issue time and compare to start date
+next_issue = unique_issue_times[issue_index + 1]
+# define active issues (XXX workshop name) as set of forecasts that are available for the hours to use for lookahead
+active_issues = [current_issue]
+# get the indices of the forecasts of the active issue times
+all_indices = findall(x -> x in active_issues, times[!,:issue_time])
 
 
 #=======================================================================
@@ -238,6 +271,7 @@ lp_load = transform_landing_probability(landing_probability_load);
 lp_solar = transform_landing_probability(landing_probability_solar);
 lp_wind = transform_landing_probability(landing_probability_wind);
 
+<<<<<<< Updated upstream:copulas/src/_main.jl
 #=======================================================================
 CORRELATION HEATMAP FOR THE LANDING PROBABILITIES
 =======================================================================#
@@ -249,13 +283,25 @@ if plot_correlogram == 1
     plot_correlogram_landing_probability(lp_solar, "Solar")
     plot_correlogram_landing_probability(lp_wind, "Wind")
 end
+=======
+# #=======================================================================
+# CORRELATION HEATMAP FOR THE LANDING PROBABILITIES
+# =======================================================================#
+# plot_correlogram = true;
+
+# if plot_correlogram
+#     plot_correlogram_landing_probability(lp_load, "Load")
+#     plot_correlogram_landing_probability(lp_solar, "Solar")
+#     plot_correlogram_landing_probability(lp_wind, "Wind")
+# end
+>>>>>>> Stashed changes:scripts/_main.jl
 
 #=======================================================================
 SIMULATE INPUT THROUGH NORTA-LIKE APPROACH
 =======================================================================#
-load_prob_scen = generate_probability_scenarios(lp_load, scenario_length, number_of_scenarios);
-solar_prob_scen = generate_probability_scenarios(lp_solar, scenario_length, number_of_scenarios);
-wind_prob_scen = generate_probability_scenarios(lp_wind, scenario_length, number_of_scenarios);
+load_prob_scen = generate_probability_scenarios(lp_load, scenario_length, number_of_scenarios, start_date);
+solar_prob_scen = generate_probability_scenarios(lp_solar, scenario_length, number_of_scenarios, start_date);
+wind_prob_scen = generate_probability_scenarios(lp_wind, scenario_length, number_of_scenarios, start_date);
 
 #=======================================================================
 CONVERT PROBABILITY SCENARIOS INTO DATA SCENARIOS
@@ -265,20 +311,21 @@ load_scen = convert_land_prob_to_data_w(load_data, load_prob_scen, scenario_year
 solar_scen = convert_land_prob_to_data_w(solar_data, solar_prob_scen, scenario_year, scenario_month, scenario_day, scenario_hour);
 wind_scen = convert_land_prob_to_data_w(wind_data, wind_prob_scen, scenario_year, scenario_month, scenario_day, scenario_hour);
 
-#=======================================================================
-PLOT HISTORICAL LANDING
-=======================================================================#
-# Plot the forecasts for each hour and the historical data for same hour
-plot_historical_landing_data = true
-if plot_historical_landing_data
-    plot_historical_landing(load_data, "Load")
-    plot_historical_landing(load_data, "Load", false)
-    plot_historical_landing(solar_data, "Solar")
-    plot_historical_landing(solar_data, "Solar", false)
-    plot_historical_landing(wind_data, "Wind")
-    plot_historical_landing(wind_data, "Wind", false)
-end
+# #=======================================================================
+# PLOT HISTORICAL LANDING
+# =======================================================================#
+# # Plot the forecasts for each hour and the historical data for same hour
+# plot_historical_landing_data = true
+# if plot_historical_landing_data
+#     plot_historical_landing(load_data, "Load")
+#     plot_historical_landing(load_data, "Load", false)
+#     plot_historical_landing(solar_data, "Solar")
+#     plot_historical_landing(solar_data, "Solar", false)
+#     plot_historical_landing(wind_data, "Wind")
+#     plot_historical_landing(wind_data, "Wind", false)
+# end
 
+<<<<<<< Updated upstream:copulas/src/_main.jl
 #=======================================================================
 PLOT SYNTHETIC AND HISTORICAL DATA
 =======================================================================#
@@ -356,14 +403,92 @@ CSV.write("load_data_scenarios.csv", load_genx);
 
 # column_names = vec(["solar_pv_", "onshore_wind_"] .* string.(myrange'));
 # renewable_header = [
+=======
+# #=======================================================================
+# PLOT SYNTHETIC AND HISTORICAL DATA
+# =======================================================================#
+# plot_scenarios_and_historical_data = true
+# if plot_scenarios_and_historical_data
+#     plot_scenarios_and_actual(load_actuals, load_scen, load_data, "Load", scenario_year, scenario_month, scenario_day, scenario_hour)
+#     plot_scenarios_and_actual(solar_actuals, solar_scen, solar_data, "Solar", scenario_year, scenario_month, scenario_day, scenario_hour)
+#     plot_scenarios_and_actual(wind_actuals, wind_scen, wind_data, "Wind", scenario_year, scenario_month, scenario_day, scenario_hour)
+# end
+
+# #=======================================================================
+# PLOT SYNTHETIC AND HISTORICAL AUTOCORRELATION
+# =======================================================================#
+# plot_autocorrelation = true
+# if plot_autocorrelation
+#     plot_hist_synth_autocor(load_scen, load_data, "Load",scenario_year, scenario_month, scenario_day, scenario_hour);
+#     plot_hist_synth_autocor(solar_scen, solar_data, "Solar",scenario_year, scenario_month, scenario_day, scenario_hour);
+#     plot_hist_synth_autocor(wind_scen, wind_data, "Wind",scenario_year, scenario_month, scenario_day, scenario_hour);
+# end
+
+# #=======================================================================
+# PLOT SYNTHETIC AND HISTORICAL PARTIAL AUTOCORRELATION
+# =======================================================================#
+# # TBD
+
+
+# #=======================================================================
+# CREATE DATA MATRIX FOR INTEGRATION WITH GEN X MODEL
+# =======================================================================#
+# myrange = collect(1:number_of_scenarios);
+
+# # Load -----------------------------------------------------------------
+# load_names = "Load_MW_z1_" .* string.(myrange);
+# load_header = [
+#     "Voll",
+#     "Demand_Segment",
+#     "Cost_of_Demand_Curtailment_per_MW",
+#     "Max_Demand_Curtailment",
+#     "Rep_Periods",
+#     "Timesteps_per_Rep_Period",
+#     "Sub_Weights",
+>>>>>>> Stashed changes:scripts/_main.jl
 #     "Time_Index",
-#     "natural_gas_combined_cycle",
-# ]
+#     "Load_MW_z1",
+# ];
+# load_header = vcat(load_header, load_names);
 
-# renewable_header = vcat(renewable_header, column_names, "battery")
-# renewable_genx = zeros(scenario_length, length(renewable_header));
-# renewable_genx[:, 3:length(renewable_header)-1] = renewable_df;
-# renewable_genx = DataFrame(renewable_genx, :auto);
-# rename!(renewable_genx, renewable_header);
-# CSV.write("generators_variability_scenarios.csv", renewable_genx)
+# load_genx = zeros(scenario_length, length(load_header));
+# load_genx[:, 10:length(load_header)] = transpose(load_scen);
+# load_genx = DataFrame(load_genx, :auto);
+# rename!(load_genx, load_header);
+# filepath = mkpath(datadir("exp_pro","gen_x_integration"));
+# CSV.write(joinpath(filepath,"load_data_scenarios.csv"), load_genx);
 
+<<<<<<< Updated upstream:copulas/src/_main.jl
+=======
+# # Renewables -----------------------------------------------------------
+# # RENEWABLES NEED TO BE IMPROVED/CORRECTED. 
+
+# renewable_df = zeros(scenario_length, 2 * number_of_scenarios);
+# # renewable_df[:, solar_index] = transpose(copy(solar_scen));
+# # renewable_df[:, wind_index] = transpose(copy(wind_scen));
+
+# # column_names = vec(["solar_pv_", "onshore_wind_"] .* string.(myrange'));
+# # renewable_header = [
+# #     "Time_Index",
+# #     "natural_gas_combined_cycle",
+# # ]
+
+# # renewable_header = vcat(renewable_header, column_names, "battery")
+# # renewable_genx = zeros(scenario_length, length(renewable_header));
+# # renewable_genx[:, 3:length(renewable_header)-1] = renewable_df;
+# # renewable_genx = DataFrame(renewable_genx, :auto);
+# # rename!(renewable_genx, renewable_header);
+# # CSV.write("generators_variability_scenarios.csv", renewable_genx)
+
+# ### Generate single dataframe with concatenated scenarios of Solar, Wind, and Load, in that order
+# master_scen_mat = zeros(scenario_length, 3 * number_of_scenarios)
+# master_scen_df = DataFrame()
+
+# # loop over the number of scenarios and concatenate scenario to the master scenario datafarme
+# for scen_id in range(1,number_of_scenarios)
+#     id_solar = copy(solar_scen[scen_id,:]) # using transpose does not work
+#     id_wind = copy(wind_scen[scen_id,:])
+#     id_load = copy(load_scen[scen_id,:])
+#     insertcols!(master_scen_df, :S => id_solar, :W => id_wind, :L => id_load, makeunique=true )
+# end
+>>>>>>> Stashed changes:scripts/_main.jl

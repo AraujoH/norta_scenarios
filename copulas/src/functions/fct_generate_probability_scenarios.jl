@@ -1,4 +1,4 @@
-function generate_probability_scenarios(data, scenario_length, number_of_scenarios) #,
+function generate_probability_scenarios(data, scenario_length, number_of_scenarios, q_landing_probability, start_time) #,
     #scenario_hour,
     #scenario_day,
     #scenario_month,
@@ -84,7 +84,7 @@ function generate_probability_scenarios(data, scenario_length, number_of_scenari
         for k in 1:scenario_length
             #Apply the inverse CDF for X_k
             # Y[nscen, k] = quantile(x[:, k], cdf_Z[k])
-            Y[nscen, k] = quantile(x[:, k], cdf_Z[k]);
+            Y[nscen, k] = quantile(cdf_Z, q_landing_probability); 
         end
     end
 

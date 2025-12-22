@@ -13,13 +13,8 @@ created under `datadir("exp_pro")` with a filename that includes the provided `t
 write_scenarios(scenarios_matrix, "example_type")
 ```
 """
-function write_scenarios(
-    x::Matrix{Any}, 
-    type::String
-    )
-
-    # Save dataframe
+function write_scenarios(x::AbstractMatrix, type::String)
     filepath = mkpath(datadir("exp_pro"))
-    filename = "scenarios_jul_18_48_" * type * ".csv";
-    CSV.write(joinpath(filepath, filename), Tables.table(x), header = false)
+    filename = "scenarios_jul_18_48_" * type * ".csv"
+    CSV.write(joinpath(filepath, filename), Tables.table(x), header=false)
 end

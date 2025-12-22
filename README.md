@@ -8,7 +8,10 @@ price consistency" project. Instead of generating independent scenarios and
 rearrange them to have the past realizations fixed, the code now generates 
 scenarios that fix and condition new realizations on past ones. 
 
---- To be edited
+------- 
+_To be edited_
+
+
 This code base is using the [Julia Language](https://julialang.org/) and
 [DrWatson](https://juliadynamics.github.io/DrWatson.jl/stable/)
 to make a reproducible scientific project named

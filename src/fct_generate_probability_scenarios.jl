@@ -1,18 +1,35 @@
-function generate_probability_scenarios(data, scenario_length, number_of_scenarios) #,
-    #scenario_hour,
-    #scenario_day,
-    #scenario_month,
-    #scenario_year)
+"""
+    generate_probability_scenarios(data, scenario_length, number_of_scenarios)
 
-    """
-    generate_probability_scenarios: 
+Generate correlated probability scenarios using NORTA (Normal-to-Anything) method.
 
-    # Arguments:
-    - 
+Implements the NORTA approach with Cholesky decomposition to generate scenarios that preserve
+the correlation structure of the input data. Automatically handles columns with zero variance
+by excluding them from correlation matrix computation and re-expanding results.
 
-    # Returns:
-    - 
-    """
+# Arguments
+- `data::DataFrame`: Input data with historical observations (typically 48 columns for hourly data)
+- `scenario_length::Int`: Number of time periods per scenario (e.g., 48 for hourly)
+- `number_of_scenarios::Int`: Number of scenarios to generate
+
+# Returns
+- `Y::Matrix{Float64}`: Generated scenarios with dimensions (number_of_scenarios × scenario_length)
+
+# Details
+- Removes columns with constant values (zero standard deviation) before computing correlations
+- Uses Cholesky factorization: M such that MM' = Σ (correlation matrix)
+- Generates independent standard normal vectors W and transforms via Z = MW
+- Applies inverse CDF transformation to match marginal distributions of input data
+- Re-expands results to original dimension with zero columns where constants were excluded
+
+# Example
+```julia
+# scenarios = generate_probability_scenarios(df, 48, 1000)
+```
+
+"""
+function generate_probability_scenarios(data, scenario_length, number_of_scenarios)
+
     # ==================================================================
     # COLUMNS TO KEEP
     # ==================================================================
@@ -21,11 +38,11 @@ function generate_probability_scenarios(data, scenario_length, number_of_scenari
     the standard deviation will be zero for columns whose elements
     are all the same =#
     x = copy(data)
-    allequal_set = Set(findall(allequal, eachcol(x)));
-    allequal_ind = sort(collect(allequal_set));
-    allindex_set = Set(collect(1:48));
-    alldifferent_ind = sort(collect(setdiff(allindex_set, allequal_set))); # Index for columns whose st. dev. isn't zero
-    x = x[:, alldifferent_ind];
+    allequal_set = Set(findall(allequal, eachcol(x)))
+    allequal_ind = sort(collect(allequal_set))
+    allindex_set = Set(collect(1:48))
+    alldifferent_ind = sort(collect(setdiff(allindex_set, allequal_set))) # Index for columns whose st. dev. isn't zero
+    x = x[:, alldifferent_ind]
 
 
     # ==================================================================
@@ -34,12 +51,12 @@ function generate_probability_scenarios(data, scenario_length, number_of_scenari
     #= Determine a lower-triangular, nonsingular factorization M of the 
         the correlation matrix for Z such that MM' = Sigma_Z. =#
     if ishermitian(cor(x))
-        Σ_Z = LinearAlgebra.cholesky(cor(x));
+        Σ_Z = LinearAlgebra.cholesky(cor(x))
     else
-        Σ_Z = factorize(cor(x));
+        Σ_Z = factorize(cor(x))
     end
-    M = Σ_Z.L;
-    dim_M = size(M, 1);
+    M = Σ_Z.L
+    dim_M = size(M, 1)
 
     # ==================================================================
     # PROBABILITY GENERATION LOOP
@@ -69,22 +86,22 @@ function generate_probability_scenarios(data, scenario_length, number_of_scenari
 
     for nscen in 1:number_of_scenarios
         # Set up normal distribution with mean 0 and sd equal to 1
-        d = Normal(0,1);
+        d = Normal(0, 1)
 
         #Generate vector W = (W_1, ..., W_k) ~ iid standard normal
-        W = rand(d, scenario_length);
+        W = rand(d, scenario_length)
 
         # Create vector Z such that Z <- MW
-        Z = M * W;
+        Z = M * W
 
         #Compute the CDF of Z
         #cdf_Z = sort(cdf.(d, Z));
-        cdf_Z = cdf.(d, Z);
-        
+        cdf_Z = cdf.(d, Z)
+
         for k in 1:scenario_length
             #Apply the inverse CDF for X_k
             # Y[nscen, k] = quantile(x[:, k], cdf_Z[k])
-            Y[nscen, k] = quantile(x[:, k], cdf_Z[k]);
+            Y[nscen, k] = quantile(x[:, k], cdf_Z[k])
         end
     end
 
@@ -98,5 +115,150 @@ function generate_probability_scenarios(data, scenario_length, number_of_scenari
         return Y_aux
     else
         return Y
+    end
+end
+
+
+"""
+Generate probability scenarios using a NORTA-type construction.
+
+Arguments
+---------
+data : AbstractMatrix
+    Historical data matrix with observations in rows and time periods in columns.
+scenario_length : Int
+    Number of time periods (must match number of columns in `data`).
+number_of_scenarios : Int
+    Number of scenarios to generate.
+intraday_market_scenarios : Bool
+    If true, scenarios share a growing prefix across scenarios.
+
+Returns
+-------
+Matrix{Float64}
+    Scenario matrix of size (number_of_scenarios × scenario_length).
+"""
+function generate_probability_scenarios(
+    data::AbstractMatrix{<:Real},
+    scenario_length::Int,
+    number_of_scenarios::Int;
+    intraday_market_scenarios::Bool
+)
+
+    # ---------------------------------------------------------------
+    # INITIAL SETUP
+    # ---------------------------------------------------------------
+
+    Random.seed!(12345)                # reproducibility
+    d = Normal(0, 1)                   # standard normal for NORTA
+    T0 = size(data, 2)                 # original number of columns
+
+    # Sanity check
+    if scenario_length != T0
+        error("scenario_length must equal number of columns in data.")
+    end
+
+    # Ensure we work with a concrete numeric matrix
+    x0 = Matrix{Float64}(data)
+
+    # ---------------------------------------------------------------
+    # DROP CONSTANT COLUMNS (ZERO VARIANCE)
+    # ---------------------------------------------------------------
+    # Columns with all equal values have zero std dev and
+    # break correlation and Cholesky factorization.
+
+    keep_mask = [!allequal(view(x0, :, j)) for j in axes(x0, 2)]
+    keep_inds = findall(keep_mask)          # columns kept
+    drop_inds = findall(.!keep_mask)        # columns dropped
+
+    x = x0[:, keep_inds]                    # reduced data matrix
+    T = size(x, 2)                          # effective dimension
+
+    if T == 0
+        error("All columns are constant; cannot build correlation matrix.")
+    end
+
+    # ---------------------------------------------------------------
+    # CORRELATION MATRIX AND FACTORIZATION
+    # ---------------------------------------------------------------
+    # Correlation matrices are symmetric by construction.
+    # We wrap with Symmetric to enforce this mathematically
+    # and avoid numerical symmetry issues.
+
+    C = Symmetric(cor(x))
+
+    # Cholesky factorization may fail due to near-singularity.
+    # We add a tiny diagonal jitter only if needed.
+    F = try
+        cholesky(C)
+    catch
+        cholesky(C + 1e-10 * I)
+    end
+
+    M = F.L                               # lower-triangular factor
+
+    # ---------------------------------------------------------------
+    # ALLOCATE ARRAYS FOR SCENARIO GENERATION
+    # ---------------------------------------------------------------
+
+    Y = Matrix{Float64}(undef, number_of_scenarios, T)   # final scenarios (reduced)
+    W = Matrix{Float64}(undef, T, number_of_scenarios)   # latent Gaussian draws
+    Z = Matrix{Float64}(undef, T, number_of_scenarios)   # correlated Gaussian vars
+
+    # ---------------------------------------------------------------
+    # SCENARIO GENERATION
+    # ---------------------------------------------------------------
+    # Two modes:
+    # 1) Intraday: scenarios share a growing prefix
+    # 2) Independent: each scenario is fully independent
+
+    if intraday_market_scenarios
+        for nscen in 1:number_of_scenarios
+
+            # Fresh iid Gaussian draw
+            W[:, nscen] .= rand(d, T)
+
+            # Enforce growing prefix across scenarios
+            if nscen > 1
+                p = min(nscen - 1, T)
+                W[1:p, nscen] .= W[1:p, nscen - 1]
+            end
+
+            # Correlate Gaussian variables
+            Z[:, nscen] .= M * W[:, nscen]
+
+            # Map to uniform via Gaussian CDF
+            cdf_Z = cdf.(d, Z[:, nscen])
+
+            # Apply inverse empirical CDF marginally
+            for k in 1:T
+                Y[nscen, k] = quantile(view(x, :, k), cdf_Z[k])
+            end
+        end
+    else
+        for nscen in 1:number_of_scenarios
+            W[:, nscen] .= rand(d, T)
+            Z[:, nscen] .= M * W[:, nscen]
+            cdf_Z = cdf.(d, Z[:, nscen])
+
+            for k in 1:T
+                Y[nscen, k] = quantile(view(x, :, k), cdf_Z[k])
+            end
+        end
+    end
+
+    # ---------------------------------------------------------------
+    # EXPAND BACK TO ORIGINAL DIMENSION IF NEEDED
+    # ---------------------------------------------------------------
+    # If some columns were dropped (e.g. solar night hours),
+    # we reinsert them as all-zero columns in the original positions.
+
+    if T == T0
+        return Y
+    else
+        Y_aux = Matrix{Float64}(undef, number_of_scenarios, T0)
+        Y_aux[:, drop_inds] .= 0.0
+        Y_aux[:, keep_inds] .= Y
+        return Y_aux
     end
 end

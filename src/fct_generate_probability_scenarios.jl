@@ -138,127 +138,260 @@ Returns
 Matrix{Float64}
     Scenario matrix of size (number_of_scenarios × scenario_length).
 """
+# function generate_probability_scenarios(
+#     data::AbstractMatrix{<:Real},
+#     scenario_length::Int,
+#     number_of_scenarios::Int;
+#     intraday_market_scenarios::Bool
+# )
+
+#     # ---------------------------------------------------------------
+#     # INITIAL SETUP
+#     # ---------------------------------------------------------------
+
+#     Random.seed!(12345)                # reproducibility
+#     d = Normal(0, 1)                   # standard normal for NORTA
+#     T0 = size(data, 2)                 # original number of columns
+
+#     # Sanity check
+#     if scenario_length != T0
+#         error("scenario_length must equal number of columns in data.")
+#     end
+
+#     # Ensure we work with a concrete numeric matrix
+#     x0 = Matrix{Float64}(data)
+
+#     # ---------------------------------------------------------------
+#     # DROP CONSTANT COLUMNS (ZERO VARIANCE)
+#     # ---------------------------------------------------------------
+#     # Columns with all equal values have zero std dev and
+#     # break correlation and Cholesky factorization.
+
+#     keep_mask = [!allequal(view(x0, :, j)) for j in axes(x0, 2)]
+#     keep_inds = findall(keep_mask)          # columns kept
+#     drop_inds = findall(.!keep_mask)        # columns dropped
+
+#     x = x0[:, keep_inds]                    # reduced data matrix
+#     T = size(x, 2)                          # effective dimension
+
+#     if T == 0
+#         error("All columns are constant; cannot build correlation matrix.")
+#     end
+
+#     # ---------------------------------------------------------------
+#     # CORRELATION MATRIX AND FACTORIZATION
+#     # ---------------------------------------------------------------
+#     # Correlation matrices are symmetric by construction.
+#     # We wrap with Symmetric to enforce this mathematically
+#     # and avoid numerical symmetry issues.
+
+#     C = Symmetric(cor(x))
+
+#     # Cholesky factorization may fail due to near-singularity.
+#     # We add a tiny diagonal jitter only if needed.
+#     F = try
+#         cholesky(C)
+#     catch
+#         cholesky(C + 1e-10 * I)
+#     end
+
+#     M = F.L                               # lower-triangular factor
+
+#     # ---------------------------------------------------------------
+#     # ALLOCATE ARRAYS FOR SCENARIO GENERATION
+#     # ---------------------------------------------------------------
+
+#     Y = Matrix{Float64}(undef, number_of_scenarios, T)   # final scenarios (reduced)
+#     W = Matrix{Float64}(undef, T, number_of_scenarios)   # latent Gaussian draws
+#     Z = Matrix{Float64}(undef, T, number_of_scenarios)   # correlated Gaussian vars
+
+#     # ---------------------------------------------------------------
+#     # SCENARIO GENERATION
+#     # ---------------------------------------------------------------
+#     # Two modes:
+#     # 1) Intraday: scenarios share a growing prefix
+#     # 2) Independent: each scenario is fully independent
+
+#     if intraday_market_scenarios
+#         for nscen in 1:number_of_scenarios
+
+#             # Fresh iid Gaussian draw
+#             W[:, nscen] .= rand(d, T)
+
+#             # Enforce growing prefix across scenarios
+#             if nscen > 1
+#                 p = min(nscen - 1, T)
+#                 W[1:p, nscen] .= W[1:p, nscen - 1]
+#             end
+
+#             # Correlate Gaussian variables
+#             Z[:, nscen] .= M * W[:, nscen]
+
+#             # Map to uniform via Gaussian CDF
+#             cdf_Z = cdf.(d, Z[:, nscen])
+
+#             # Apply inverse empirical CDF marginally
+#             for k in 1:T
+#                 Y[nscen, k] = quantile(view(x, :, k), cdf_Z[k])
+#             end
+#         end
+#     else
+#         for nscen in 1:number_of_scenarios
+#             W[:, nscen] .= rand(d, T)
+#             Z[:, nscen] .= M * W[:, nscen]
+#             cdf_Z = cdf.(d, Z[:, nscen])
+
+#             for k in 1:T
+#                 Y[nscen, k] = quantile(view(x, :, k), cdf_Z[k])
+#             end
+#         end
+#     end
+
+#     # ---------------------------------------------------------------
+#     # EXPAND BACK TO ORIGINAL DIMENSION IF NEEDED
+#     # ---------------------------------------------------------------
+#     # If some columns were dropped (e.g. solar night hours),
+#     # we reinsert them as all-zero columns in the original positions.
+
+#     if T == T0
+#         return Y
+#     else
+#         Y_aux = Matrix{Float64}(undef, number_of_scenarios, T0)
+#         Y_aux[:, drop_inds] .= 0.0
+#         Y_aux[:, keep_inds] .= Y
+#         return Y_aux
+#     end
+# end
+
 function generate_probability_scenarios(
     data::AbstractMatrix{<:Real},
     scenario_length::Int,
     number_of_scenarios::Int;
-    intraday_market_scenarios::Bool
+    intraday_market_scenarios::Bool,
+    num_batches::Int = 10,
+    seed::Int = 12345
 )
 
-    # ---------------------------------------------------------------
-    # INITIAL SETUP
-    # ---------------------------------------------------------------
+    d = Normal(0, 1)
 
-    Random.seed!(12345)                # reproducibility
-    d = Normal(0, 1)                   # standard normal for NORTA
-    T0 = size(data, 2)                 # original number of columns
+    # Master RNG: the single source of randomness for reproducibility.
+    # We only use it to generate per batch seeds.
+    rng_master = MersenneTwister(seed)
 
-    # Sanity check
-    if scenario_length != T0
-        error("scenario_length must equal number of columns in data.")
-    end
-
-    # Ensure we work with a concrete numeric matrix
+    # ==============================================================
+    # PREP: drop constant columns (zero variance) so cor and cholesky work
+    # ==============================================================
     x0 = Matrix{Float64}(data)
+    T0 = size(x0, 2)
 
-    # ---------------------------------------------------------------
-    # DROP CONSTANT COLUMNS (ZERO VARIANCE)
-    # ---------------------------------------------------------------
-    # Columns with all equal values have zero std dev and
-    # break correlation and Cholesky factorization.
+    if scenario_length != T0
+        error("scenario_length must equal the number of columns in data.")
+    end
 
     keep_mask = [!allequal(view(x0, :, j)) for j in axes(x0, 2)]
-    keep_inds = findall(keep_mask)          # columns kept
-    drop_inds = findall(.!keep_mask)        # columns dropped
+    keep_inds = findall(keep_mask)
+    drop_inds = findall(.!keep_mask)
 
-    x = x0[:, keep_inds]                    # reduced data matrix
-    T = size(x, 2)                          # effective dimension
+    x = x0[:, keep_inds]
+    T = size(x, 2)
 
     if T == 0
-        error("All columns are constant; cannot build correlation matrix.")
+        error("All columns are constant. Cannot generate scenarios.")
     end
 
-    # ---------------------------------------------------------------
+    # ==============================================================
     # CORRELATION MATRIX AND FACTORIZATION
-    # ---------------------------------------------------------------
-    # Correlation matrices are symmetric by construction.
-    # We wrap with Symmetric to enforce this mathematically
-    # and avoid numerical symmetry issues.
-
+    # ==============================================================
     C = Symmetric(cor(x))
 
-    # Cholesky factorization may fail due to near-singularity.
-    # We add a tiny diagonal jitter only if needed.
     F = try
         cholesky(C)
     catch
         cholesky(C + 1e-10 * I)
     end
 
-    M = F.L                               # lower-triangular factor
+    M = F.L
 
     # ---------------------------------------------------------------
-    # ALLOCATE ARRAYS FOR SCENARIO GENERATION
+    # Decide how many scenarios we generate, and how big the output is
     # ---------------------------------------------------------------
+    scenarios_per_batch = intraday_market_scenarios ? scenario_length : number_of_scenarios
 
-    Y = Matrix{Float64}(undef, number_of_scenarios, T)   # final scenarios (reduced)
-    W = Matrix{Float64}(undef, T, number_of_scenarios)   # latent Gaussian draws
-    Z = Matrix{Float64}(undef, T, number_of_scenarios)   # correlated Gaussian vars
+    if intraday_market_scenarios && number_of_scenarios != scenario_length
+        @warn "intraday_market_scenarios=true ignores number_of_scenarios; using scenario_length=$scenario_length per batch"
+    end
+
+    total_rows = intraday_market_scenarios ? (num_batches * scenarios_per_batch) : number_of_scenarios
+
+    # Allocate the big output container for ALL batches, stacked vertically.
+    Y_all_reduced = Matrix{Float64}(undef, total_rows, T)
+
+    row0 = 0
 
     # ---------------------------------------------------------------
-    # SCENARIO GENERATION
+    # Batch loop
     # ---------------------------------------------------------------
-    # Two modes:
-    # 1) Intraday: scenarios share a growing prefix
-    # 2) Independent: each scenario is fully independent
+    for b in 1:(intraday_market_scenarios ? num_batches : 1)
 
-    if intraday_market_scenarios
-        for nscen in 1:number_of_scenarios
+        # Deterministic per batch seed from master seed
+        batch_seed = rand(rng_master, UInt)
+        rng_batch = MersenneTwister(batch_seed)
 
-            # Fresh iid Gaussian draw
-            W[:, nscen] .= rand(d, T)
+        # Allocate arrays for THIS batch only
+        Y = Matrix{Float64}(undef, scenarios_per_batch, T)
+        W = Matrix{Float64}(undef, T, scenarios_per_batch)
+        Z = Matrix{Float64}(undef, T, scenarios_per_batch)
 
-            # Enforce growing prefix across scenarios
-            if nscen > 1
-                p = min(nscen - 1, T)
-                W[1:p, nscen] .= W[1:p, nscen - 1]
+        if intraday_market_scenarios
+            for nscen in 1:scenarios_per_batch
+                W[:, nscen] .= rand(rng_batch, d, T)
+
+                if nscen > 1
+                    p = min(nscen - 1, T)
+                    W[1:p, nscen] .= W[1:p, nscen - 1]
+                end
+
+                Z[:, nscen] .= M * W[:, nscen]
+                cdf_Z = cdf.(d, Z[:, nscen])
+
+                for k in 1:T
+                    Y[nscen, k] = quantile(view(x, :, k), cdf_Z[k])
+                end
             end
 
-            # Correlate Gaussian variables
-            Z[:, nscen] .= M * W[:, nscen]
+            Y_all_reduced[row0 + 1 : row0 + scenarios_per_batch, :] .= Y
+            row0 += scenarios_per_batch
 
-            # Map to uniform via Gaussian CDF
-            cdf_Z = cdf.(d, Z[:, nscen])
+        else
+            for nscen in 1:scenarios_per_batch
+                W[:, nscen] .= rand(rng_batch, d, T)
+                Z[:, nscen] .= M * W[:, nscen]
+                cdf_Z = cdf.(d, Z[:, nscen])
 
-            # Apply inverse empirical CDF marginally
-            for k in 1:T
-                Y[nscen, k] = quantile(view(x, :, k), cdf_Z[k])
+                for k in 1:T
+                    Y[nscen, k] = quantile(view(x, :, k), cdf_Z[k])
+                end
             end
-        end
-    else
-        for nscen in 1:number_of_scenarios
-            W[:, nscen] .= rand(d, T)
-            Z[:, nscen] .= M * W[:, nscen]
-            cdf_Z = cdf.(d, Z[:, nscen])
 
-            for k in 1:T
-                Y[nscen, k] = quantile(view(x, :, k), cdf_Z[k])
+            # Non intraday mode returns just one block
+            return (T == T0) ? Y : begin
+                Y_aux = Matrix{Float64}(undef, number_of_scenarios, T0)
+                Y_aux[:, drop_inds] .= 0.0
+                Y_aux[:, keep_inds] .= Y
+                Y_aux
             end
         end
     end
 
-    # ---------------------------------------------------------------
-    # EXPAND BACK TO ORIGINAL DIMENSION IF NEEDED
-    # ---------------------------------------------------------------
-    # If some columns were dropped (e.g. solar night hours),
-    # we reinsert them as all-zero columns in the original positions.
-
+    # ==============================================================
+    # EXPAND BACK TO ORIGINAL DIMENSION IF WE DROPPED ANY COLUMNS
+    # ==============================================================
     if T == T0
-        return Y
+        return Y_all_reduced
     else
-        Y_aux = Matrix{Float64}(undef, number_of_scenarios, T0)
-        Y_aux[:, drop_inds] .= 0.0
-        Y_aux[:, keep_inds] .= Y
-        return Y_aux
+        Y_all = Matrix{Float64}(undef, total_rows, T0)
+        Y_all[:, drop_inds] .= 0.0
+        Y_all[:, keep_inds] .= Y_all_reduced
+        return Y_all
     end
 end

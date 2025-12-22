@@ -1,6 +1,14 @@
 # Scenario Generation with NORTA
 ## Author: Hugo Santarém de Araújo
 
+
+**Dec. 22, 2025**
+- The code now generates scenarios as required by the "Intraday Market under 
+price consistency" project. Instead of generating independent scenarios and 
+rearrange them to have the past realizations fixed, the code now generates 
+scenarios that fix and condition new realizations on past ones. 
+
+--- To be edited
 This code base is using the [Julia Language](https://julialang.org/) and
 [DrWatson](https://juliadynamics.github.io/DrWatson.jl/stable/)
 to make a reproducible scientific project named

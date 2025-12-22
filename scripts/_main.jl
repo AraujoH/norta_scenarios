@@ -49,7 +49,8 @@ include(joinpath(pwd(), "src", "fct_read_h5_file.jl"));
 include(joinpath(pwd(), "src", "fct_read_input_file.jl"));
 include(joinpath(pwd(), "src", "fct_transform_landing_probability.jl"));
 include(joinpath(pwd(), "src", "fct_write_percentiles.jl"));
-
+include(joinpath(pwd(), "src", "fct_write_scenarios.jl"));
+include(joinpath(pwd(), "src", "fct_plot_scenarios_and_actual_aExam.jl"));
 #=======================================================================
 AUXILIARY FUNCTIONS
 =======================================================================#
@@ -188,7 +189,7 @@ wind_data = bind_historical_forecast(false,
 Write forecast percentile to files 
 =======================================================================#
 #write_percentile(load_data, "load", scenario_year, scenario_month, scenario_day, scenario_hour);
-write_percentile = true
+write_percentile = false
 if write_percentile
     write_percentiles(load_data, "load", scenario_year, scenario_month, scenario_day, scenario_hour)
     write_percentiles(solar_data, "solar", scenario_year, scenario_month, scenario_day, scenario_hour)
@@ -241,7 +242,7 @@ lp_wind = transform_landing_probability(landing_probability_wind);
 #=======================================================================
 CORRELATION HEATMAP FOR THE LANDING PROBABILITIES
 =======================================================================#
-plot_correlogram = true;
+plot_correlogram = false;
 
 if plot_correlogram
     plot_correlogram_landing_probability(lp_load, "Load")
@@ -266,10 +267,9 @@ wind_scen = convert_land_prob_to_data_w(wind_data, wind_prob_scen, scenario_year
 #=======================================================================
 WRITE SCENARIOS TO FILE
 =======================================================================#
-
-write_scenarios(load_scen, "load")
-write_scenarios(solar_scen, "solar")
-write_scenarios(wind_scen, "wind")
+write_scenarios(load_scen, "load_2400_scenarios")
+write_scenarios(solar_scen, "solar_2400_scenarios")
+write_scenarios(wind_scen, "wind_2400_scenarios")
 
 #=======================================================================
 PLOT HISTORICAL LANDING
@@ -294,6 +294,18 @@ if plot_scenarios_and_historical_data
     plot_scenarios_and_actual(solar_actuals, solar_scen, solar_data, "Solar", scenario_year, scenario_month, scenario_day, scenario_hour)
     plot_scenarios_and_actual(wind_actuals, wind_scen, wind_data, "Wind", scenario_year, scenario_month, scenario_day, scenario_hour)
 end
+
+
+#=======================================================================
+PLOT SYNTHETIC AND HISTORICAL DATA FOR A-EXAM PRESENTATION
+=======================================================================#
+plot_scenarios_and_historical_data = true
+if plot_scenarios_and_historical_data
+    plot_scenarios_and_actual_aExam(load_actuals, load_scen, load_data, "Load", scenario_year, scenario_month, scenario_day, scenario_hour)
+    plot_scenarios_and_actual_aExam(solar_actuals, solar_scen, solar_data, "Solar", scenario_year, scenario_month, scenario_day, scenario_hour)
+    plot_scenarios_and_actual_aExam(wind_actuals, wind_scen, wind_data, "Wind", scenario_year, scenario_month, scenario_day, scenario_hour)
+end
+
 
 #=======================================================================
 PLOT SYNTHETIC AND HISTORICAL AUTOCORRELATION

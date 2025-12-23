@@ -254,11 +254,14 @@ end
 SIMULATE INPUT THROUGH NORTA-LIKE APPROACH
 =======================================================================#
 load_prob_scen = generate_probability_scenarios(
-    lp_load, scenario_length, number_of_scenarios; intraday_market_scenarios=true);
+    lp_load, scenario_length, number_of_scenarios; 
+    intraday_market_scenarios=true, num_batches=50);
 solar_prob_scen = generate_probability_scenarios(
-    lp_solar, scenario_length, number_of_scenarios; intraday_market_scenarios=true);
+    lp_solar, scenario_length, number_of_scenarios; 
+    intraday_market_scenarios=true, num_batches=50);
 wind_prob_scen = generate_probability_scenarios(
-    lp_wind, scenario_length, number_of_scenarios; intraday_market_scenarios=true);
+    lp_wind, scenario_length, number_of_scenarios; 
+    intraday_market_scenarios=true, num_batches=50);
 
 #=======================================================================
 CONVERT PROBABILITY SCENARIOS INTO DATA SCENARIOS
@@ -273,9 +276,9 @@ wind_scen = convert_land_prob_to_data(
 #=======================================================================
 WRITE SCENARIOS TO FILE
 =======================================================================#
-write_scenarios(load_scen, "load_idm_50batches_scenarios")
-write_scenarios(solar_scen, "solar_idm_50batches_scenarios")
-write_scenarios(wind_scen, "wind_idm_50batches_scenarios")
+write_scenarios(load_scen, "load_18PM_idm_50batches_scenarios")
+write_scenarios(solar_scen, "solar_18PM_idm_50batches_scenarios")
+write_scenarios(wind_scen, "wind_18PM_idm_50batches_scenarios")
 
 #=======================================================================
 PLOT HISTORICAL LANDING

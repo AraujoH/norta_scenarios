@@ -3,8 +3,9 @@ CASE SPOE FOLLOW UP PAPER
 XXXXXXXXXXXXXXXXXXXX
 DATA TYPE           : load          # LOAD, SOLAR, WIND
 SCENARIO LENGTH     : 48
-SCENARIO PATHS      : 480
+SCENARIO PATHS      : 48
 SCENARIO SHEETS     : 10            # 1, 2, ..., 10, INT
+N. OF ITERATIONS    : 10            # Number of iterations in the Intraday code
 SCENARIO HOUR       : 06            # 0, 1, 2, ..., 23 
 SCENARIO DAY        : 18            # Format DD
 SCENARIO MONTH      : 07            # Format MM
@@ -18,5 +19,5 @@ FORECAST SOLAR DA   : ercot_BA_solar_forecast_day_ahead_existing_2018.h5
 FORECAST SOLAR 2DA  : ercot_BA_solar_forecast_2_day_ahead_existing_2018.h5
 HISTORICAL WIND     : ercot_BA_wind_actuals_Existing_2018.h5
 FORECAST WIND DA    : ercot_BA_wind_forecast_day_ahead_existing_2018.h5
-FORECAST WIND 2DA   : ercot_BA_wind_forecast_day_ahead_existing_2018.HSD
+FORECAST WIND 2DA   : ercot_BA_wind_forecast_2_day_ahead_existing_2018.h5
 WRITE PERCENTILE    : 1

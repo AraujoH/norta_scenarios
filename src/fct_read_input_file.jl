@@ -30,15 +30,18 @@ function read_input_file(filepath)
            parse(Int, lines[6]),
            parse(Int, lines[7]),
            parse(Int, lines[8]),
-           strip(lines[9]),
-           strip(lines[10]),
+           parse(Int, lines[9]),
+           parse.(Int, split(lines[10],",")),
            strip(lines[11]),
            strip(lines[12]),
            strip(lines[13]),
            strip(lines[14]),
            strip(lines[15]),
            strip(lines[16]),
-           parse(Int, lines[17]))
+           strip(lines[17]),
+           strip(lines[18]),
+           strip(lines[19]),
+           parse(Int, lines[20]))
 end
 
 

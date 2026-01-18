@@ -1,13 +1,15 @@
-CASE
+CASE SPOE FOLLOW UP PAPER
 --------------------------------------------------------------------------------
 XXXXXXXXXXXXXXXXXXXX
 DATA TYPE           : load          # LOAD, SOLAR, WIND
 SCENARIO LENGTH     : 48
-SCENARIO PATHS      : 1000
-SCENARIO HOUR       : 14            # 0, 1, 2, ..., 23 
-SCENARIO DAY        : 29            # Format DD
-SCENARIO MONTH      : 08            # Format MM
+SCENARIO PATHS      : 480
+SCENARIO SHEETS     : 10            # 1, 2, ..., 10, INT
+SCENARIO HOUR       : 06            # 0, 1, 2, ..., 23 
+SCENARIO DAY        : 18            # Format DD
+SCENARIO MONTH      : 07            # Format MM
 SCENARIO YEAR       : 2018          # Format YYY
+INTRADAY HOURS      : 6, 12, 18     # Comma separated list of intraday timestamps (hours)
 READ LOCALLY        : 0             # 0: Locally, 1: fetch from AWS bucket
 HISTORICAL LOAD     : ercot_BA_load_actuals_2018.h5
 FORECAST LOAD       : ercot_BA_load_forecast_day_ahead_2018.h5

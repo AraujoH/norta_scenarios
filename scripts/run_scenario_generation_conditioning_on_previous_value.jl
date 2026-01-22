@@ -32,13 +32,13 @@ Pkg.activate("norta_scenarios")
 
 # Import all required packages. 
 begin
+    using CairoMakie
     using CSV
     using DataFrames
     using Dates
     using DelimitedFiles
     using Distributions
     using HDF5
-    # using LaTeXStrings
     using LinearAlgebra
     using LinearSolve
     using Random
@@ -46,7 +46,6 @@ begin
     using Serialization
     using Statistics
     using StatsBase
-    using Plots
     using Tables
     using TSFrames
     using TimeZones

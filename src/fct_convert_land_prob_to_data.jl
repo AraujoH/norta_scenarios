@@ -112,3 +112,57 @@ function convert_land_prob_to_data(
 
     return scen_data
 end
+
+
+function convert_land_prob_cube_to_data(
+    data::DataFrame,
+    scenarios_4d::AbstractArray{<:Real,4},   # scenarios_4d[i, s, scen, t] in (0,1)
+    scenario_year::Int,
+    scenario_month::Int,
+    scenario_day::Int,
+    scenario_hour::Int;
+    save_path_weather_4d::AbstractString
+)
+    # Horizon window
+    scenario_timestamp_begin = DateTime(scenario_year, scenario_month, scenario_day, scenario_hour)
+    T = size(scenarios_4d, 4)
+    scenario_timestamp_end = scenario_timestamp_begin + Hour(T - 1)
+
+    # Select relevant times and ahead group
+    dt = filter(:forecast_time => t -> scenario_timestamp_begin <= t <= scenario_timestamp_end, data)
+    dt = dt[dt.ahead_factor .== "one", :]
+
+    # Marginal samples per lead time (row j corresponds to time j)
+    marg = select(dt, r"p_")
+
+    if size(marg, 1) != T
+        error(
+            "Mismatch between marginal distributions and scenarios_4d: " *
+            "marg has $(size(marg, 1)) rows but scenarios_4d has $T time steps."
+        )
+    end
+
+    Nit     = size(scenarios_4d, 1)
+    nsheets = size(scenarios_4d, 2)
+    Nscen   = size(scenarios_4d, 3)
+
+    # Output: weather_4d[i, s, scen, t]
+    weather_4d = Array{Float64}(undef, Nit, nsheets, Nscen, T)
+
+    # Convert probabilities to data via empirical quantiles, time by time
+    for j in 1:T
+        rowvals = collect(marg[j, :])  # empirical samples for time j
+
+        for i in 1:Nit
+            for s in 1:nsheets
+                @inbounds for scen in 1:Nscen
+                    p = scenarios_4d[i, s, scen, j]
+                    weather_4d[i, s, scen, j] = quantile(rowvals, p)
+                end
+            end
+        end
+    end
+
+    serialize(save_path_weather_4d, weather_4d)
+    return weather_4d
+end

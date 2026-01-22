@@ -288,21 +288,21 @@ SIMULATE INPUT THROUGH NORTA-LIKE APPROACH
 #     intraday_market_scenarios=true, num_batches=10);
 
 load_scenarios_4d, load_w_4d = generate_probability_scenarios_cube!(
-    lp_load, 
+    lp_load,
     scenario_length, number_of_scenarios, number_of_iterations, number_of_sheets;
     save_path_scenarios_4d=joinpath(pwd(), "results", "load_scenarios_4d.jls"),
     save_path_W_4d=joinpath(pwd(), "results", "load_w_4d.jls"),
 );
 
 solar_scenarios_4d, solar_w_4d = generate_probability_scenarios_cube!(
-    lp_solar, 
+    lp_solar,
     scenario_length, number_of_scenarios, number_of_iterations, number_of_sheets;
     save_path_scenarios_4d=joinpath(pwd(), "results", "solar_scenarios_4d.jls"),
     save_path_W_4d=joinpath(pwd(), "results", "solar_w_4d.jls"),
 );
 
 wind_scenarios_4d, wind_w_4d = generate_probability_scenarios_cube!(
-    lp_wind, 
+    lp_wind,
     scenario_length, number_of_scenarios, number_of_iterations, number_of_sheets;
     save_path_scenarios_4d=joinpath(pwd(), "results", "wind_scenarios_4d.jls"),
     save_path_W_4d=joinpath(pwd(), "results", "wind_w_4d.jls"),
@@ -318,19 +318,22 @@ CONVERT PROBABILITY SCENARIOS INTO DATA SCENARIOS
 # wind_scen = convert_land_prob_to_data(
 #     wind_data, wind_prob_scen, scenario_year, scenario_month, scenario_day, scenario_hour);
 
-load_weather_scenarios = convert_land_prob_cube_to_data(
+load_weather_avg_scenarios, load_weather_scenarios = 
+convert_land_prob_cube_to_data(
     load_data, load_scenarios_4d,
     scenario_year, scenario_month, scenario_day, scenario_hour;
     save_path_weather_4d=joinpath(pwd(), "results", "load_weather_4d.jls"),
 );
 
-solar_weather_scenarios = convert_land_prob_cube_to_data(
+solar_weather_avg_scenarios, solar_weather_scenarios = 
+convert_land_prob_cube_to_data(
     solar_data, solar_scenarios_4d,
     scenario_year, scenario_month, scenario_day, scenario_hour;
     save_path_weather_4d=joinpath(pwd(), "results", "solar_weather_4d.jls"),
 );
 
-wind_weather_scenarios = convert_land_prob_cube_to_data(
+wind_weather_avg_scenarios, wind_weather_scenarios = 
+convert_land_prob_cube_to_data(
     wind_data, wind_scenarios_4d,
     scenario_year, scenario_month, scenario_day, scenario_hour;
     save_path_weather_4d=joinpath(pwd(), "results", "wind_weather_4d.jls"),
@@ -339,8 +342,60 @@ wind_weather_scenarios = convert_land_prob_cube_to_data(
 #=======================================================================
 SIMULATE SCENARIOS FOR PENALTY PRICES COMPUTATION
 =======================================================================#
+idm_seed = 29031990
+if !isempty(intraday_hours)
+    for hour in intraday_hours
+        # Generate the probability scenarios ...................................
+        idm_load_scenarios, _ = generate_probability_IDM_scenarios_cube!(
+            hour, lp_load,
+            joinpath(pwd(), "results", "load_w_4d.jls"),
+            scenario_length, number_of_scenarios, number_of_iterations, number_of_sheets;
+            seed=idm_seed,
+            save_path_scenarios_4d=joinpath(pwd(), "results", "load_scenarios_4d_idm_hour_$(hour).jls"),
+            save_path_W_4d=joinpath(pwd(), "results", "load_w_4d_idm_hour_$(hour).jls"),
+        )
 
+        idm_solar_scenarios, _ = generate_probability_IDM_scenarios_cube!(
+            hour, lp_solar,
+            joinpath(pwd(), "results", "solar_w_4d.jls"),
+            scenario_length, number_of_scenarios, number_of_iterations, number_of_sheets;
+            seed=idm_seed,
+            save_path_scenarios_4d=joinpath(pwd(), "results", "solar_scenarios_4d_idm_hour_$(hour).jls"),
+            save_path_W_4d=joinpath(pwd(), "results", "solar_w_4d_idm_hour_$(hour).jls"),
+        )
 
+        idm_wind_scenarios, _ = generate_probability_IDM_scenarios_cube!(
+            hour, lp_wind,
+            joinpath(pwd(), "results", "wind_w_4d.jls"),
+            scenario_length, number_of_scenarios, number_of_iterations, number_of_sheets;
+            seed=idm_seed,
+            save_path_scenarios_4d=joinpath(pwd(), "results", "load_scenarios_4d_idm_hour_$(hour).jls"),
+            save_path_W_4d=joinpath(pwd(), "results", "load_w_4d_idm_hour_$(hour).jls"),
+        )
+
+        # Transform the probability scenarios into data scenarios ..............
+        load_weather_IDM_avg_scenarios, load_weather_scenarios = 
+        convert_land_prob_cube_to_data(
+            load_data, idm_load_scenarios,
+            scenario_year, scenario_month, scenario_day, scenario_hour;
+            save_path_weather_4d=joinpath(pwd(), "results", "load_IDM_weather_4d_intraday_hour_$(hour).jls"),
+        )
+
+        solar_weather_avg_scenarios, solar_weather_scenarios = 
+        convert_land_prob_cube_to_data(
+            solar_data, idm_solar_scenarios,
+            scenario_year, scenario_month, scenario_day, scenario_hour;
+            save_path_weather_4d=joinpath(pwd(), "results", "solar_IDM_weather_4d_intraday_hour_$(hour).jls"),
+        )
+
+        wind_weather_avg_scenarios, wind_weather_scenarios = 
+        convert_land_prob_cube_to_data(
+            wind_data, idm_wind_scenarios,
+            scenario_year, scenario_month, scenario_day, scenario_hour;
+            save_path_weather_4d=joinpath(pwd(), "results", "wind_IDM_weather_4d_intraday_hour_$(hour).jls"),
+        )
+    end
+end
 
 
 #=======================================================================

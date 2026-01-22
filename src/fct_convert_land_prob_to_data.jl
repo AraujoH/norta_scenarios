@@ -1,65 +1,46 @@
-# function convert_land_prob_to_data_w(data, prob_scenarios, scenario_year, scenario_month, scenario_day, scenario_hour)
-#     """
-#     convert_land_prob_to_data:
+"""    convert_land_prob_to_data(
+        data::DataFrame,
+        prob_scenarios::AbstractMatrix{<:Real},
+        scenario_year::Int,
+        scenario_month::Int,
+        scenario_day::Int,
+        scenario_hour::Int
+    )
 
-#     # Arguments
-#     - data::DataFrame
-#     - prob_scenarios::Matrix{Float64}
-#     - scenario_year::Int64
-#     - scenario_month::Int64
-#     - scenario_day::Int64
-#     - scenario_hour::Int64
-#     - 
-#     # Returns
-#     - 
-#     """
-#     # Create timestamp vectors
-#     #scenario_timestamp_begin = DateTime(scenario_year, scenario_month, scenario_day, 0)
-#     #scenario_timestamp_end = DateTime(scenario_year, scenario_month, scenario_day, 23)
-#     scenario_timestamp_begin = DateTime(scenario_year, scenario_month, scenario_day, scenario_hour);
-#     scenario_timestamp_end = scenario_timestamp_begin + Hour(47);
+Convert probability scenarios to physical values using empirical marginal
+distributions from historical forecast data.
 
-#     #= dt returns 48 rows. Every odd-numbered row is a forecast from 24h
-#     to 48h ahead while every even-numbered row is a forecast up until 23h
-#     ahead. =#
-#     #= WORKING
-#     FOR A GIVEN DATE RANGE I WANT SCENARIOS FOR, I WILL SELECT THE 
-#     MARGINAL DISTRIBUTIONS THAT ARE CLOSER IN TIME TO THE FORECAST TIME
-#     I WANT. MY THINKING IS THAT IF I HAVE TWO OPTIONS: (A) FORECASTS
-#     ISSUED AT TIME X FOR A FORECAST TIME F, AND (B) FORECASTS ISSUED 
-#     AT A TIME Y FOR A FORECAST TIME F, I WILL PICK THE MARGINAL DISTRIBUTION
-#     ASSOCIATED WITH THE FORECAST ISSUED AT THE CLOSEST TIME TO MY F. 
-#     IF F IS MAR. 29TH 6AM, X MAR.28 6PM, AND Y IS MAR. 29 1AM, I WILL
-#     PICK THE MARGINAL DISTRIBUTIONS ASSOCIATED WITH Y
-#     =#
-#     dt = filter(:forecast_time => x -> scenario_timestamp_begin <= x <= scenario_timestamp_end, data);
-#     dt = dt[dt.ahead_factor .== "one",:];
+Transforms probability scenarios (values in [0,1]) into actual physical quantities
+(e.g., MW for load/wind/solar) by applying empirical quantile functions from
+historical data for each time step in the forecast horizon.
 
-#     marg_distributions = select(dt, r"p_");
-#     scen_data = Matrix{}(undef, number_of_scenarios, scenario_length);
-#     for scen in axes(prob_scenarios, 1)
-#         for j in axes(prob_scenarios, 2)
-#             scen_data[scen, j] = quantile(marg_distributions[j,:], prob_scenarios[scen,j]);           
-#         end
-#     end
+# Arguments
+- `data`: DataFrame containing historical forecast data with columns `forecast_time`,
+  `ahead_factor`, and marginal distribution samples (`p_*` columns)
+- `prob_scenarios`: Matrix `(number_of_scenarios, scenario_length)` with probability
+  values in [0,1]
+- `scenario_year`, `scenario_month`, `scenario_day`, `scenario_hour`: Starting timestamp
+  for the forecast horizon
 
-#     return(scen_data)
-#     #= Old code 
-#     up_to_24h = dt[2:2:48, :]
-#     after_24h = dt[1:2:48, :]
+# Returns
+- `scen_data`: Matrix `(number_of_scenarios, scenario_length)` containing physical
+  values obtained by inverting probabilities through empirical quantiles
 
-#     indexes = startswith.(names(dt), "p_")
-#     scen_data = Matrix{Float64}(undef, number_of_scenarios, scenario_length)
+# Behavior
+- Filters data to match the forecast horizon from the starting timestamp
+- Selects one-ahead forecasts only (`ahead_factor == "one"`)
+- For each time step `j`, uses the empirical distribution from `data` to map
+  `prob_scenarios[:, j]` to physical values via quantile inversion
+- Throws an error if time alignment between scenarios and marginals is inconsistent
 
-#     for i in 1:1:scenario_length÷2
-#         scen_data[:, i] = quantile(up_to_24h[i, indexes], prob_scenarios[:, i])
-#         scen_data[:, i+24] = quantile(after_24h[i, indexes], prob_scenarios[:, i])
-#     end
-
-#     return(scen_data)
-#     --- Old code =#
-# end
-
+# Example
+```julia
+scen_data = convert_land_prob_to_data(
+    historical_df, prob_scenarios,
+    2018, 7, 15, 12  # July 15, 2018 at noon
+)
+```
+"""
 function convert_land_prob_to_data(
     data::DataFrame,
     prob_scenarios::AbstractMatrix{<:Real},
@@ -114,6 +95,52 @@ function convert_land_prob_to_data(
 end
 
 
+"""    convert_land_prob_cube_to_data(
+        data::DataFrame,
+        scenarios_4d::AbstractArray{<:Real,4},
+        scenario_year::Int,
+        scenario_month::Int,
+        scenario_day::Int,
+        scenario_hour::Int;
+        save_path_weather_4d::AbstractString
+    )
+
+Convert 4D probability scenarios to physical values and compute iteration-wise
+averages across sheets.
+
+Extends `convert_land_prob_to_data` to handle 4D scenario ensembles, transforming
+probability values to physical quantities via empirical quantiles and computing
+sheet-averaged scenarios for each iteration.
+
+# Arguments
+- `data`: DataFrame with historical forecast data including `forecast_time`,
+  `ahead_factor`, and marginal samples (`p_*` columns)
+- `scenarios_4d`: 4D array `[i, s, scen, t]` with probability values in [0,1]
+  where `i` = iteration, `s` = sheet, `scen` = scenario, `t` = time
+- `scenario_year`, `scenario_month`, `scenario_day`, `scenario_hour`: Forecast
+  horizon starting timestamp
+- `save_path_weather_4d`: Output path for serializing weather data arrays
+
+# Returns
+- `weather_average_3d`: Array `[i, scen, t]` with sheet-averaged physical values
+  for each iteration
+- `weather_4d`: Array `[i, s, scen, t]` with full physical value scenarios
+
+# Behavior
+- Converts all probability scenarios to physical values using empirical quantiles
+- Computes mean across sheets for each iteration: `mean(weather_4d[i, :, :, :])`
+- Serializes both `weather_4d` and `weather_average_3d` to disk
+- Throws an error if time step count mismatches between scenarios and marginals
+
+# Example
+```julia
+avg_weather, full_weather = convert_land_prob_cube_to_data(
+    historical_df, scenarios_4d,
+    2018, 7, 15, 12;
+    save_path_weather_4d = "weather_data_4d.jls"
+)
+```
+"""
 function convert_land_prob_cube_to_data(
     data::DataFrame,
     scenarios_4d::AbstractArray{<:Real,4},   # scenarios_4d[i, s, scen, t] in (0,1)
@@ -130,7 +157,7 @@ function convert_land_prob_cube_to_data(
 
     # Select relevant times and ahead group
     dt = filter(:forecast_time => t -> scenario_timestamp_begin <= t <= scenario_timestamp_end, data)
-    dt = dt[dt.ahead_factor .== "one", :]
+    dt = dt[dt.ahead_factor.=="one", :]
 
     # Marginal samples per lead time (row j corresponds to time j)
     marg = select(dt, r"p_")
@@ -142,9 +169,9 @@ function convert_land_prob_cube_to_data(
         )
     end
 
-    Nit     = size(scenarios_4d, 1)
+    Nit = size(scenarios_4d, 1)
     nsheets = size(scenarios_4d, 2)
-    Nscen   = size(scenarios_4d, 3)
+    Nscen = size(scenarios_4d, 3)
 
     # Output: weather_4d[i, s, scen, t]
     weather_4d = Array{Float64}(undef, Nit, nsheets, Nscen, T)
@@ -163,6 +190,19 @@ function convert_land_prob_cube_to_data(
         end
     end
 
+    # Average all scenarios for each iteration
+    weather_average_3d = Array{Float64}(undef, Nit, Nscen, T)
+
+    for i in 1:Nit
+        weather_average_3d[i, :, :] .= 0.0
+        for s in 1:nsheets
+            weather_average_3d[i, :, :] .+= weather_4d[i, s, :, :]
+        end
+        weather_average_3d[i, :, :] ./= nsheets
+    end
+
+
     serialize(save_path_weather_4d, weather_4d)
-    return weather_4d
+    serialize(replace(save_path_weather_4d, "weather_4d" => "average_weather_3d"), weather_average_3d)
+    return weather_average_3d, weather_4d
 end

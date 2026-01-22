@@ -333,8 +333,8 @@ function generate_probability_scenarios(
     scenario_length::Int,
     number_of_scenarios::Int;
     intraday_market_scenarios::Bool,
-    num_batches::Int = 10,
-    seed::Int = 12345
+    num_batches::Int=10,
+    seed::Int=12345
 )
 
     d = Normal(0, 1)
@@ -414,7 +414,7 @@ function generate_probability_scenarios(
 
                 if nscen > 1
                     p = min(nscen - 1, T)
-                    W[1:p, nscen] .= W[1:p, nscen - 1]
+                    W[1:p, nscen] .= W[1:p, nscen-1]
                 end
 
                 Z[:, nscen] .= M * W[:, nscen]
@@ -425,7 +425,7 @@ function generate_probability_scenarios(
                 end
             end
 
-            Y_all_reduced[row0 + 1 : row0 + scenarios_per_batch, :] .= Y
+            Y_all_reduced[row0+1:row0+scenarios_per_batch, :] .= Y
             row0 += scenarios_per_batch
 
         else
@@ -551,6 +551,131 @@ scenarios_mean = deserialize("scenarios_mean.jls")
 =#
 ```
 """
+# function generate_probability_scenarios_cube!(
+#     data::AbstractMatrix{<:Real},
+#     scenario_length::Int,
+#     number_of_scenarios::Int,
+#     number_of_iterations::Int,
+#     number_of_sheets::Int;
+#     seed::Int=12345,
+#     save_path_4d::AbstractString,
+#     save_path_mean::AbstractString,
+#     save_path_normal_samples_4d::AbstractString
+# )
+#     d = Normal(0, 1)
+
+#     rng_master = MersenneTwister(seed)
+
+#     # -----------------------------
+#     # Prep: drop constant columns
+#     # -----------------------------
+#     x0 = Matrix{Float64}(data)
+#     T0 = size(x0, 2)
+
+#     if scenario_length != T0
+#         error("scenario_length must equal the number of columns in data.")
+#     end
+
+#     keep_mask = [!allequal(view(x0, :, j)) for j in axes(x0, 2)]
+#     keep_inds = findall(keep_mask)
+#     drop_inds = findall(.!keep_mask)
+
+#     x = x0[:, keep_inds]
+#     T = size(x, 2)
+
+#     if T == 0
+#         error("All columns are constant. Cannot generate scenarios.")
+#     end
+
+#     # -----------------------------
+#     # Correlation and factorization
+#     # -----------------------------
+#     C = Symmetric(cor(x))
+#     F = try
+#         cholesky(C)
+#     catch
+#         cholesky(C + 1e-10 * I)
+#         @info "Input matrix slightly perturbed."
+#     end
+#     M = F.L
+
+#     # -----------------------------
+#     # Allocate outputs (full size)
+#     # scenarios_4d[i, s, n, t]
+#     # scenarios_mean[i, n, t]
+#     # -----------------------------
+#     Nit = number_of_iterations
+#     nsheets = number_of_sheets
+#     Nscen = number_of_scenarios
+
+#     scenarios_4d = Array{Float64}(undef, Nit, nsheets, Nscen, T0)
+#     scenarios_mean = Array{Float64}(undef, Nit, Nscen, T0)
+#     scenarios_normal_samples_4d = Array{Float64}(undef, Nit, nsheets, T, Nscen)
+#     # -----------------------------
+#     # Work buffers (reused)
+#     # Reduced-dimension buffers operate on kept columns only
+#     # -----------------------------
+#     W = Matrix{Float64}(undef, Nit, T, Nscen)
+#     Z = Matrix{Float64}(undef, T, Nscen)
+#     Y_red = Matrix{Float64}(undef, Nscen, T)
+#     Y_full = Matrix{Float64}(undef, Nscen, T0)
+#     cdf_Z = Vector{Float64}(undef, T)
+
+#     for i in 1:Nit
+#         # mean over sheets for this iteration (full dimension)
+#         @views scenarios_mean[i, :, :] .= 0.0
+
+#         for s in 1:nsheets
+#             # deterministic per (iteration, sheet) seed from master seed
+#             sheet_seed = rand(rng_master, Int)
+#             rng = MersenneTwister(sheet_seed)
+
+#             # Build reduced scenarios for this sheet
+#             for n in 1:Nscen
+#                 @views W[:, n] .= rand(rng, d, T)
+
+#                 # Remember the past across scenario paths
+#                 if n > 1
+#                     p = min(n - 1, T)
+#                     @views W[1:p, n] .= W[1:p, n-1]
+#                 end
+
+#                 @views Z[:, n] .= M * W[:, n]
+
+#                 # Note the inversion of loops
+#                 @inbounds for t in 1:T
+#                     cdf_Z[t] = cdf(d, Z[t, n])
+#                 end
+
+#                 @inbounds for t in 1:T
+#                     Y_red[n, t] = quantile(view(x, :, t), cdf_Z[t])
+#                 end
+#             end
+
+#             # expand back to original dimension (put zeros in dropped columns)
+#             if T == T0
+#                 Y_full .= Y_red
+#             else
+#                 Y_full[:, drop_inds] .= 0.0
+#                 Y_full[:, keep_inds] .= Y_red
+#             end
+
+#             # store sheet block and accumulate mean
+#             @views scenarios_normal_samples_4d[i, s, :, :] .= W
+#             @views scenarios_4d[i, s, :, :] .= Y_full
+#             @views scenarios_mean[i, :, :] .+= Y_full
+#         end
+
+#         @views scenarios_mean[i, :, :] ./= nsheets
+#     end
+
+#     serialize(save_path_normal_samples_4d, scenarios_normal_samples_4d)
+#     serialize(save_path_4d, scenarios_4d)
+#     serialize(save_path_mean, scenarios_mean)
+
+#     return scenarios_mean
+# end
+
 function generate_probability_scenarios_cube!(
     data::AbstractMatrix{<:Real},
     scenario_length::Int,
@@ -558,16 +683,13 @@ function generate_probability_scenarios_cube!(
     number_of_iterations::Int,
     number_of_sheets::Int;
     seed::Int = 12345,
-    save_path_4d::AbstractString,
-    save_path_mean::AbstractString,
+    save_path_scenarios_4d::AbstractString,
+    save_path_W_4d::AbstractString,
 )
     d = Normal(0, 1)
-
     rng_master = MersenneTwister(seed)
 
-    # -----------------------------
     # Prep: drop constant columns
-    # -----------------------------
     x0 = Matrix{Float64}(data)
     T0 = size(x0, 2)
 
@@ -586,9 +708,7 @@ function generate_probability_scenarios_cube!(
         error("All columns are constant. Cannot generate scenarios.")
     end
 
-    # -----------------------------
     # Correlation and factorization
-    # -----------------------------
     C = Symmetric(cor(x))
     F = try
         cholesky(C)
@@ -598,22 +718,20 @@ function generate_probability_scenarios_cube!(
     end
     M = F.L
 
-    # -----------------------------
     # Allocate outputs (full size)
-    # scenarios_4d[i, s, n, t]
-    # scenarios_mean[i, n, t]
-    # -----------------------------
     Nit = number_of_iterations
     nsheets = number_of_sheets
     Nscen = number_of_scenarios
 
+    # Scenarios: full dimension (includes dropped columns filled with zeros)
+    # scenarios_4d[i, s, n, t]
     scenarios_4d = Array{Float64}(undef, Nit, nsheets, Nscen, T0)
-    scenarios_mean = Array{Float64}(undef, Nit, Nscen, T0)
 
-    # -----------------------------
+    # Normal variates: kept dimension only
+    # W_4d[i, s, t, n]
+    W_4d = Array{Float64}(undef, Nit, nsheets, T, Nscen)
+
     # Work buffers (reused)
-    # Reduced-dimension buffers operate on kept columns only
-    # -----------------------------
     W = Matrix{Float64}(undef, T, Nscen)
     Z = Matrix{Float64}(undef, T, Nscen)
     Y_red = Matrix{Float64}(undef, Nscen, T)
@@ -621,24 +739,26 @@ function generate_probability_scenarios_cube!(
     cdf_Z = Vector{Float64}(undef, T)
 
     for i in 1:Nit
-        # mean over sheets for this iteration (full dimension)
-        @views scenarios_mean[i, :, :] .= 0.0
-
         for s in 1:nsheets
-            # deterministic per (iteration, sheet) seed from master seed
             sheet_seed = rand(rng_master, Int)
             rng = MersenneTwister(sheet_seed)
 
-            # build reduced scenarios for this sheet
+            # Build W for this (i, s)
             for n in 1:Nscen
                 @views W[:, n] .= rand(rng, d, T)
 
-                # remember the past across scenario paths
+                # Remember the past across scenario paths
                 if n > 1
                     p = min(n - 1, T)
                     @views W[1:p, n] .= W[1:p, n - 1]
                 end
+            end
 
+            # Store W for this sheet
+            @views W_4d[i, s, :, :] .= W
+
+            # Build scenarios for this sheet
+            for n in 1:Nscen
                 @views Z[:, n] .= M * W[:, n]
 
                 @inbounds for t in 1:T
@@ -650,7 +770,7 @@ function generate_probability_scenarios_cube!(
                 end
             end
 
-            # expand back to original dimension (put zeros in dropped columns)
+            # Expand back to original dimension
             if T == T0
                 Y_full .= Y_red
             else
@@ -658,16 +778,13 @@ function generate_probability_scenarios_cube!(
                 Y_full[:, keep_inds] .= Y_red
             end
 
-            # store sheet block and accumulate mean
+            # Store scenarios for this sheet
             @views scenarios_4d[i, s, :, :] .= Y_full
-            @views scenarios_mean[i, :, :] .+= Y_full
         end
-
-        @views scenarios_mean[i, :, :] ./= nsheets
     end
 
-    serialize(save_path_4d, scenarios_4d)
-    serialize(save_path_mean, scenarios_mean)
+    serialize(save_path_W_4d, W_4d)
+    serialize(save_path_scenarios_4d, scenarios_4d)
 
-    return scenarios_mean
+    return scenarios_4d, W_4d
 end

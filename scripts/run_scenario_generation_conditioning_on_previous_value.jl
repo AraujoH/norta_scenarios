@@ -1,8 +1,28 @@
-# Scenario Generation with Copulas 
-# 
-# Hugo S. de Araujo
-# Nov. 14th, 2022 | Mays Group | Cornell University
-################################################################################
+#= Scenario Generation with Copulas 
+.......................................................
+Hugo S. de Araujo
+Nov. 14th, 2022 | Mays Group | Cornell University
+.......................................................
+
+This script runs the scenario generation procedure to create S sequences or 
+time series with length T. Using the approach in this script, a sequence s in 
+S will have dependence on the previous s values in the same sequence s. 
+
+Because of this, once the |S| = T, no new sequences will be generated, therefore,
+requiring a new seed. For example, 
+
+Given S = 5 and T = 5, the sequences will be generated as follows:
+
+s1 = 7, 6, 12, 4, 9
+s2 = 7, 5, 8, 2, 11
+s3 = 7, 5, 6, 1, 5
+s4 = 7, 5, 6, 9, 15
+s5 = 7, 5, 6, 9, 2 
+
+That is one batch of sequences.
+
+
+############################################################################# =#
 
 #=======================================================================
 PROJECT SETUP
@@ -23,6 +43,7 @@ begin
     using LinearSolve
     using Random
     using RCall
+    using Serialization
     using Statistics
     using StatsBase
     using Plots
@@ -76,10 +97,13 @@ input_file_path = projectdir("copulas.txt")
 data_type,
 scenario_length,
 number_of_scenarios,
+number_of_sheets,
+number_of_iterations,
 scenario_hour,
 scenario_day,
 scenario_month,
 scenario_year,
+intraday_hours,
 read_locally,
 historical_load,
 forecast_load,
@@ -253,32 +277,78 @@ end
 #=======================================================================
 SIMULATE INPUT THROUGH NORTA-LIKE APPROACH
 =======================================================================#
-load_prob_scen = generate_probability_scenarios(
-    lp_load, scenario_length, number_of_scenarios; 
-    intraday_market_scenarios=true, num_batches=50);
-solar_prob_scen = generate_probability_scenarios(
-    lp_solar, scenario_length, number_of_scenarios; 
-    intraday_market_scenarios=true, num_batches=50);
-wind_prob_scen = generate_probability_scenarios(
-    lp_wind, scenario_length, number_of_scenarios; 
-    intraday_market_scenarios=true, num_batches=50);
+# load_prob_scen = generate_probability_scenarios(
+#     lp_load, scenario_length, number_of_scenarios;
+#     intraday_market_scenarios=true, num_batches=10);
+# solar_prob_scen = generate_probability_scenarios(
+#     lp_solar, scenario_length, number_of_scenarios;
+#     intraday_market_scenarios=true, num_batches=10);
+# wind_prob_scen = generate_probability_scenarios(
+#     lp_wind, scenario_length, number_of_scenarios;
+#     intraday_market_scenarios=true, num_batches=10);
+
+load_scenarios_4d, load_w_4d = generate_probability_scenarios_cube!(
+    lp_load, 
+    scenario_length, number_of_scenarios, number_of_iterations, number_of_sheets;
+    save_path_scenarios_4d=joinpath(pwd(), "results", "load_scenarios_4d.jls"),
+    save_path_W_4d=joinpath(pwd(), "results", "load_w_4d.jls"),
+);
+
+solar_scenarios_4d, solar_w_4d = generate_probability_scenarios_cube!(
+    lp_solar, 
+    scenario_length, number_of_scenarios, number_of_iterations, number_of_sheets;
+    save_path_scenarios_4d=joinpath(pwd(), "results", "solar_scenarios_4d.jls"),
+    save_path_W_4d=joinpath(pwd(), "results", "solar_w_4d.jls"),
+);
+
+wind_scenarios_4d, wind_w_4d = generate_probability_scenarios_cube!(
+    lp_wind, 
+    scenario_length, number_of_scenarios, number_of_iterations, number_of_sheets;
+    save_path_scenarios_4d=joinpath(pwd(), "results", "wind_scenarios_4d.jls"),
+    save_path_W_4d=joinpath(pwd(), "results", "wind_w_4d.jls"),
+);
 
 #=======================================================================
 CONVERT PROBABILITY SCENARIOS INTO DATA SCENARIOS
 =======================================================================#
-load_scen = convert_land_prob_to_data(
-    load_data, load_prob_scen, scenario_year, scenario_month, scenario_day, scenario_hour);
-solar_scen = convert_land_prob_to_data(
-    solar_data, solar_prob_scen, scenario_year, scenario_month, scenario_day, scenario_hour);
-wind_scen = convert_land_prob_to_data(
-    wind_data, wind_prob_scen, scenario_year, scenario_month, scenario_day, scenario_hour);
+# load_scen = convert_land_prob_to_data(
+#     load_data, load_prob_scen, scenario_year, scenario_month, scenario_day, scenario_hour);
+# solar_scen = convert_land_prob_to_data(
+#     solar_data, solar_prob_scen, scenario_year, scenario_month, scenario_day, scenario_hour);
+# wind_scen = convert_land_prob_to_data(
+#     wind_data, wind_prob_scen, scenario_year, scenario_month, scenario_day, scenario_hour);
+
+load_weather_scenarios = convert_land_prob_cube_to_data(
+    load_data, load_scenarios_4d,
+    scenario_year, scenario_month, scenario_day, scenario_hour;
+    save_path_weather_4d=joinpath(pwd(), "results", "load_weather_4d.jls"),
+);
+
+solar_weather_scenarios = convert_land_prob_cube_to_data(
+    solar_data, solar_scenarios_4d,
+    scenario_year, scenario_month, scenario_day, scenario_hour;
+    save_path_weather_4d=joinpath(pwd(), "results", "solar_weather_4d.jls"),
+);
+
+wind_weather_scenarios = convert_land_prob_cube_to_data(
+    wind_data, wind_scenarios_4d,
+    scenario_year, scenario_month, scenario_day, scenario_hour;
+    save_path_weather_4d=joinpath(pwd(), "results", "wind_weather_4d.jls"),
+);
+
+#=======================================================================
+SIMULATE SCENARIOS FOR PENALTY PRICES COMPUTATION
+=======================================================================#
+
+
+
 
 #=======================================================================
 WRITE SCENARIOS TO FILE
 =======================================================================#
-write_scenarios(load_scen, "load_18PM_idm_50batches_scenarios")
-write_scenarios(solar_scen, "solar_18PM_idm_50batches_scenarios")
-write_scenarios(wind_scen, "wind_18PM_idm_50batches_scenarios")
+write_scenarios(load_scen, "load")
+write_scenarios(solar_scen, "solar")
+write_scenarios(wind_scen, "wind")
 
 #=======================================================================
 PLOT HISTORICAL LANDING

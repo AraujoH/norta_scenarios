@@ -1,3 +1,27 @@
+"""
+    transform_landing_probability(data)
+
+Transform landing probability data into a matrix format by filtering and reshaping.
+
+This function processes landing probability data by:
+1. Sorting the data by issue time
+2. Grouping by issue time and counting occurrences
+3. Filtering to keep only groups with exactly 48 entries
+4. Reshaping the filtered landing probabilities into a matrix where each row represents
+   an issue time and each column represents a time step
+
+# Arguments
+- `data`: A DataFrame containing at least the columns `:issue_time` and `:landing_probability`
+
+# Returns
+- A transposed matrix where each row corresponds to an issue time (with 48 entries) and 
+  contains the landing probability values across time steps
+
+# Example
+```julia
+transformed_matrix = transform_landing_probability(my_data)
+```
+"""
 function transform_landing_probability(data)
     x = copy(data);
     # Sort data by issue time

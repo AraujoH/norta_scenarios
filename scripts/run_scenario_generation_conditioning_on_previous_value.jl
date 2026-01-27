@@ -59,6 +59,7 @@ include(joinpath(pwd(), "src", "fct_convert_hours_2018.jl"));
 include(joinpath(pwd(), "src", "fct_convert_ISO_standard.jl"));
 include(joinpath(pwd(), "src", "fct_convert_land_prob_to_data.jl"));
 include(joinpath(pwd(), "src", "fct_generate_probability_scenarios.jl"));
+include(joinpath(pwd(), "src", "fct_generate_IDM_scenarios.jl"));
 include(joinpath(pwd(), "src", "fct_getplots.jl"));
 include(joinpath(pwd(), "src", "fct_plot_historical_landing.jl"));
 include(joinpath(pwd(), "src", "fct_plot_historical_synthetic_autocorrelation.jl"));
@@ -315,26 +316,26 @@ CONVERT PROBABILITY SCENARIOS INTO DATA SCENARIOS
 # wind_scen = convert_land_prob_to_data(
 #     wind_data, wind_prob_scen, scenario_year, scenario_month, scenario_day, scenario_hour);
 
-load_weather_avg_scenarios, load_weather_scenarios = 
-convert_land_prob_cube_to_data(
-    load_data, load_scenarios_4d,
-    scenario_year, scenario_month, scenario_day, scenario_hour;
-    save_path_weather_4d=joinpath(pwd(), "results", "load_weather_4d.jls"),
-);
+load_weather_avg_scenarios, load_weather_scenarios =
+    convert_land_prob_cube_to_data(
+        load_data, load_scenarios_4d,
+        scenario_year, scenario_month, scenario_day, scenario_hour;
+        save_path_weather_4d=joinpath(pwd(), "results", "load_weather_4d.jls"),
+    );
 
-solar_weather_avg_scenarios, solar_weather_scenarios = 
-convert_land_prob_cube_to_data(
-    solar_data, solar_scenarios_4d,
-    scenario_year, scenario_month, scenario_day, scenario_hour;
-    save_path_weather_4d=joinpath(pwd(), "results", "solar_weather_4d.jls"),
-);
+solar_weather_avg_scenarios, solar_weather_scenarios =
+    convert_land_prob_cube_to_data(
+        solar_data, solar_scenarios_4d,
+        scenario_year, scenario_month, scenario_day, scenario_hour;
+        save_path_weather_4d=joinpath(pwd(), "results", "solar_weather_4d.jls"),
+    );
 
-wind_weather_avg_scenarios, wind_weather_scenarios = 
-convert_land_prob_cube_to_data(
-    wind_data, wind_scenarios_4d,
-    scenario_year, scenario_month, scenario_day, scenario_hour;
-    save_path_weather_4d=joinpath(pwd(), "results", "wind_weather_4d.jls"),
-);
+wind_weather_avg_scenarios, wind_weather_scenarios =
+    convert_land_prob_cube_to_data(
+        wind_data, wind_scenarios_4d,
+        scenario_year, scenario_month, scenario_day, scenario_hour;
+        save_path_weather_4d=joinpath(pwd(), "results", "wind_weather_4d.jls"),
+    );
 
 #=======================================================================
 WRITE SCENARIOS TO FILE
@@ -392,144 +393,52 @@ if !isempty(intraday_hours)
         )
 
         # Transform the probability scenarios into data scenarios ..............
-        load_weather_IDM_avg_scenarios, load_weather_scenarios = 
-        convert_land_prob_cube_to_data(
-            load_data, idm_load_scenarios,
-            scenario_year, scenario_month, scenario_day, scenario_hour;
-            save_path_weather_4d=joinpath(pwd(), "results", "load_IDM_weather_4d_intraday_hour_$(hour).jls"),
+        load_weather_IDM_avg_scenarios, load_weather_scenarios =
+            convert_land_prob_cube_to_data(
+                load_data, idm_load_scenarios,
+                scenario_year, scenario_month, scenario_day, scenario_hour;
+                save_path_weather_4d=joinpath(pwd(), "results", "load_IDM_weather_4d_intraday_hour_$(hour).jls"),
+            )
+
+        solar_weather_IDM_avg_scenarios, solar_weather_scenarios =
+            convert_land_prob_cube_to_data(
+                solar_data, idm_solar_scenarios,
+                scenario_year, scenario_month, scenario_day, scenario_hour;
+                save_path_weather_4d=joinpath(pwd(), "results", "solar_IDM_weather_4d_intraday_hour_$(hour).jls"),
+            )
+
+        wind_weather_IDM_avg_scenarios, wind_weather_scenarios =
+            convert_land_prob_cube_to_data(
+                wind_data, idm_wind_scenarios,
+                scenario_year, scenario_month, scenario_day, scenario_hour;
+                save_path_weather_4d=joinpath(pwd(), "results", "wind_IDM_weather_4d_intraday_hour_$(hour).jls"),
+            )
+
+        #=======================================================================
+        WRITE IDM SCENARIOS TO FILE
+        =======================================================================#
+        write_scenarios_to_file(
+            load_weather_IDM_avg_scenarios,
+            scenario_day, scenario_month, scenario_year,
+            "load";
+            is_idm=true,
+            intraday_hour=hour
         )
 
-        solar_weather_avg_scenarios, solar_weather_scenarios = 
-        convert_land_prob_cube_to_data(
-            solar_data, idm_solar_scenarios,
-            scenario_year, scenario_month, scenario_day, scenario_hour;
-            save_path_weather_4d=joinpath(pwd(), "results", "solar_IDM_weather_4d_intraday_hour_$(hour).jls"),
+        write_scenarios_to_file(
+            solar_weather_IDM_avg_scenarios,
+            scenario_day, scenario_month, scenario_year,
+            "solar";
+            is_idm=true,
+            intraday_hour=hour
         )
 
-        wind_weather_avg_scenarios, wind_weather_scenarios = 
-        convert_land_prob_cube_to_data(
-            wind_data, idm_wind_scenarios,
-            scenario_year, scenario_month, scenario_day, scenario_hour;
-            save_path_weather_4d=joinpath(pwd(), "results", "wind_IDM_weather_4d_intraday_hour_$(hour).jls"),
+        write_scenarios_to_file(
+            wind_weather_IDM_avg_scenarios,
+            scenario_day, scenario_month, scenario_year,
+            "wind";
+            is_idm=true,
+            intraday_hour=hour
         )
     end
-end
-
-
-#=======================================================================
-WRITE SCENARIOS TO FILE
-=======================================================================#
-write_scenarios(load_scen, "load")
-write_scenarios(solar_scen, "solar")
-write_scenarios(wind_scen, "wind")
-
-#=======================================================================
-PLOT HISTORICAL LANDING
-=======================================================================#
-# Plot the forecasts for each hour and the historical data for same hour
-plot_historical_landing_data = true
-if plot_historical_landing_data
-    plot_historical_landing(load_data, "Load")
-    plot_historical_landing(load_data, "Load", false)
-    plot_historical_landing(solar_data, "Solar")
-    plot_historical_landing(solar_data, "Solar", false)
-    plot_historical_landing(wind_data, "Wind")
-    plot_historical_landing(wind_data, "Wind", false)
-end
-
-#=======================================================================
-PLOT SYNTHETIC AND HISTORICAL DATA
-=======================================================================#
-plot_scenarios_and_historical_data = true
-if plot_scenarios_and_historical_data
-    plot_scenarios_and_actual(load_actuals, load_scen, load_data, "Load", scenario_year, scenario_month, scenario_day, scenario_hour)
-    plot_scenarios_and_actual(solar_actuals, solar_scen, solar_data, "Solar", scenario_year, scenario_month, scenario_day, scenario_hour)
-    plot_scenarios_and_actual(wind_actuals, wind_scen, wind_data, "Wind", scenario_year, scenario_month, scenario_day, scenario_hour)
-end
-
-
-#=======================================================================
-PLOT SYNTHETIC AND HISTORICAL DATA FOR A-EXAM PRESENTATION
-=======================================================================#
-plot_scenarios_and_historical_data = true
-if plot_scenarios_and_historical_data
-    plot_scenarios_and_actual_aExam(load_actuals, load_scen, load_data, "Load", scenario_year, scenario_month, scenario_day, scenario_hour)
-    plot_scenarios_and_actual_aExam(solar_actuals, solar_scen, solar_data, "Solar", scenario_year, scenario_month, scenario_day, scenario_hour)
-    plot_scenarios_and_actual_aExam(wind_actuals, wind_scen, wind_data, "Wind", scenario_year, scenario_month, scenario_day, scenario_hour)
-end
-
-
-#=======================================================================
-PLOT SYNTHETIC AND HISTORICAL AUTOCORRELATION
-=======================================================================#
-plot_autocorrelation = true
-if plot_autocorrelation
-    plot_hist_synth_autocor(load_scen, load_data, "Load", scenario_year, scenario_month, scenario_day, scenario_hour)
-    plot_hist_synth_autocor(solar_scen, solar_data, "Solar", scenario_year, scenario_month, scenario_day, scenario_hour)
-    plot_hist_synth_autocor(wind_scen, wind_data, "Wind", scenario_year, scenario_month, scenario_day, scenario_hour)
-end
-
-#=======================================================================
-PLOT SYNTHETIC AND HISTORICAL PARTIAL AUTOCORRELATION
-=======================================================================#
-# TBD
-
-
-#=======================================================================
-CREATE DATA MATRIX FOR INTEGRATION WITH GEN X MODEL
-=======================================================================#
-myrange = collect(1:number_of_scenarios);
-
-# Load -----------------------------------------------------------------
-load_names = "Load_MW_z1_" .* string.(myrange);
-load_header = [
-    "Voll",
-    "Demand_Segment",
-    "Cost_of_Demand_Curtailment_per_MW",
-    "Max_Demand_Curtailment",
-    "Rep_Periods",
-    "Timesteps_per_Rep_Period",
-    "Sub_Weights",
-    "Time_Index",
-    "Load_MW_z1",
-];
-load_header = vcat(load_header, load_names);
-
-load_genx = zeros(scenario_length, length(load_header));
-load_genx[:, 10:length(load_header)] = transpose(load_scen);
-load_genx = DataFrame(load_genx, :auto);
-rename!(load_genx, load_header);
-filepath = mkpath(datadir("exp_pro", "gen_x_integration"));
-CSV.write(joinpath(filepath, "load_data_scenarios.csv"), load_genx);
-
-# Renewables -----------------------------------------------------------
-# RENEWABLES NEED TO BE IMPROVED/CORRECTED. 
-
-renewable_df = zeros(scenario_length, 2 * number_of_scenarios);
-# renewable_df[:, solar_index] = transpose(copy(solar_scen));
-# renewable_df[:, wind_index] = transpose(copy(wind_scen));
-
-# column_names = vec(["solar_pv_", "onshore_wind_"] .* string.(myrange'));
-# renewable_header = [
-#     "Time_Index",
-#     "natural_gas_combined_cycle",
-# ]
-
-# renewable_header = vcat(renewable_header, column_names, "battery")
-# renewable_genx = zeros(scenario_length, length(renewable_header));
-# renewable_genx[:, 3:length(renewable_header)-1] = renewable_df;
-# renewable_genx = DataFrame(renewable_genx, :auto);
-# rename!(renewable_genx, renewable_header);
-# CSV.write("generators_variability_scenarios.csv", renewable_genx)
-
-### Generate single dataframe with concatenated scenarios of Solar, Wind, and Load, in that order
-master_scen_mat = zeros(scenario_length, 3 * number_of_scenarios)
-master_scen_df = DataFrame()
-
-# loop over the number of scenarios and concatenate scenario to the master scenario datafarme
-for scen_id in range(1, number_of_scenarios)
-    id_solar = copy(solar_scen[scen_id, :]) # using transpose does not work
-    id_wind = copy(wind_scen[scen_id, :])
-    id_load = copy(load_scen[scen_id, :])
-    insertcols!(master_scen_df, :S => id_solar, :W => id_wind, :L => id_load, makeunique=true)
 end

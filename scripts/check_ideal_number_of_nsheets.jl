@@ -5,6 +5,10 @@ Nov. 14th, 2022 | Mays Group | Cornell University
 .......................................................
 =#
 
+"""
+Analyzes the optimal number of sheets (nsheets) for copula-based scenario 
+generation by evaluating stability metrics across different nsheets values.
+"""
 
 #=======================================================================
 PROJECT SETUP
@@ -36,23 +40,18 @@ end
 
 # Include functions 
 include(joinpath(pwd(), "src", "fct_bind_historical_forecast.jl"));
+include(joinpath(pwd(), "src", "fct_check_stability_of_scenarios.jl"));
 include(joinpath(pwd(), "src", "fct_compute_hourly_average_actuals.jl"));
 include(joinpath(pwd(), "src", "fct_compute_landing_probability.jl"));
 include(joinpath(pwd(), "src", "fct_convert_hours_2018.jl"));
 include(joinpath(pwd(), "src", "fct_convert_ISO_standard.jl"));
 include(joinpath(pwd(), "src", "fct_convert_land_prob_to_data.jl"));
 include(joinpath(pwd(), "src", "fct_generate_probability_scenarios.jl"));
-include(joinpath(pwd(), "src", "fct_getplots.jl"));
-include(joinpath(pwd(), "src", "fct_plot_historical_landing.jl"));
-include(joinpath(pwd(), "src", "fct_plot_historical_synthetic_autocorrelation.jl"));
-include(joinpath(pwd(), "src", "fct_plot_correlogram_landing_probability.jl"));
-include(joinpath(pwd(), "src", "fct_plot_scenarios_and_actual.jl"));
 include(joinpath(pwd(), "src", "fct_read_h5_file.jl"));
 include(joinpath(pwd(), "src", "fct_read_input_file.jl"));
 include(joinpath(pwd(), "src", "fct_transform_landing_probability.jl"));
 include(joinpath(pwd(), "src", "fct_write_percentiles.jl"));
 include(joinpath(pwd(), "src", "fct_write_scenarios.jl"));
-include(joinpath(pwd(), "src", "fct_plot_scenarios_and_actual_aExam.jl"));
 include(joinpath(pwd(), "src", "fct_generate_IDM_scenarios.jl"));
 #=======================================================================
 AUXILIARY FUNCTIONS
@@ -355,31 +354,61 @@ end
 # CHECK IDEAL NUMBER OF SHEETS BASED ON STABILITY OF SCENARIOS
 # ==============================================================================
 tol_vector = collect(0.001:0.005:0.1)
-stable_sheet_number = zeros(length(tol_vector))
-best_y = zeros(number_of_sheets)
+k_values = [5, 10, 15, 20]
 
-best_x = 1000
-best_tol = 100
-best_idx = -999
+load_weather_scenarios = deserialize(joinpath(output_dir, "load_weather_4d.jls"))
 
-load_weather_scenarios = deserialize(joinpath(output_dir,"load_weather_4d.jls"))
+for k_consecutive in k_values
+    stable_sheet_number = fill(NaN, length(tol_vector))
 
-for (idx, tol) in enumerate(tol_vector)
-    x, y = check_stability_of_scenarios_mean(
-        load_weather_scenarios, 
-        1;
-        tol_rel= tol,
-        k_consecutive=10
+    best_x   = typemax(Int)
+    best_tol = NaN
+    best_y   = Float64[]   # will be replaced by y from the best tol
+    best_idx = 0
+
+    for (idx, tol) in enumerate(tol_vector)
+        x, y = check_stability_of_scenarios_mean(
+            load_weather_scenarios,
+            1;
+            tol_rel = tol,
+            k_consecutive = k_consecutive
+        )
+
+        # x can be nothing if it never stabilizes
+        stable_sheet_number[idx] = x === nothing ? NaN : x
+        
+        if x !== nothing && x < best_x
+            best_x   = x
+            best_tol = tol
+            best_y   = y
+            best_idx = idx
+        end
+    end
+
+    # Plot ---------------------------------------------------------------------
+    f = Figure(resolution = (800, 600))
+    ax = Axis(
+        f[1, 1],
+        xlabel = "Number of scenario sheets",
+        ylabel = "Tolerance",
+        title  = "Number of Scenario Sheets vs. Tolerance (k = $(k_consecutive))"
     )
 
-    stable_sheet_number[idx] = x
+    barplot!(
+        ax,
+        tol_vector,
+        stable_sheet_number;
+        color = :turquoise4,
+        width = 0.004,
+        direction = :x
+    )
 
-    if x < best_x
-        best_x = x
-        best_tol = tol 
-        best_y = y
-        best_idx = idx
-    end
+    # x axis ticks every 5
+    max_sheets = maximum(stable_sheet_number[.!isnan.(stable_sheet_number)]; init = 0.0)
+    ax.xticks = 0:5:ceil(Int, max_sheets)
+
+    # y axis: show all tolerance values
+    ax.yticks = (tol_vector, [@sprintf("%.3f", v) for v in tol_vector])
+
+    save(joinpath(output_dir, "sheets_vs_tolerance__k$(k_consecutive).png"), f)
 end
-
-

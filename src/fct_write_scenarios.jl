@@ -26,7 +26,8 @@ function write_scenarios_to_file(
     scenario_year::Int,
     data_type::String;
     filepath::Union{Nothing,String}=nothing,
-    is_idm::Bool=false
+    is_idm::Bool=false,
+    intraday_hour::Union{Nothing,Int}=nothing
 )
 
     # Reshape x to 2D
@@ -36,11 +37,12 @@ function write_scenarios_to_file(
     filepath = filepath === nothing ? mkpath(datadir("exp_pro")) : mkpath(filepath)
 
     # Build filename
-    idm_tag = is_idm ? "_IDM" : ""
+    idm_tag = is_idm ? "IDM_" : ""
     filename =
         data_type * "_" *
         "scenarios_" *
         idm_tag *
+        string(intraday_hour) * "h_" *
         string(scenario_year) * "_" *
         lpad(scenario_month, 2, '0') * "_" *
         lpad(scenario_day, 2, '0') * "_" * 

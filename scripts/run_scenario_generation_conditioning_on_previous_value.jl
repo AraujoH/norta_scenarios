@@ -60,7 +60,6 @@ include(joinpath(pwd(), "src", "fct_convert_ISO_standard.jl"));
 include(joinpath(pwd(), "src", "fct_convert_land_prob_to_data.jl"));
 include(joinpath(pwd(), "src", "fct_generate_probability_scenarios.jl"));
 include(joinpath(pwd(), "src", "fct_getplots.jl"));
-# include(joinpath(pwd(), "src", "fct_plot_correlation_heatmap.jl"));
 include(joinpath(pwd(), "src", "fct_plot_historical_landing.jl"));
 include(joinpath(pwd(), "src", "fct_plot_historical_synthetic_autocorrelation.jl"));
 include(joinpath(pwd(), "src", "fct_plot_correlogram_landing_probability.jl"));
@@ -70,7 +69,6 @@ include(joinpath(pwd(), "src", "fct_read_input_file.jl"));
 include(joinpath(pwd(), "src", "fct_transform_landing_probability.jl"));
 include(joinpath(pwd(), "src", "fct_write_percentiles.jl"));
 include(joinpath(pwd(), "src", "fct_write_scenarios.jl"));
-include(joinpath(pwd(), "src", "fct_plot_scenarios_and_actual_aExam.jl"));
 #=======================================================================
 AUXILIARY FUNCTIONS
 =======================================================================#
@@ -337,6 +335,27 @@ convert_land_prob_cube_to_data(
     scenario_year, scenario_month, scenario_day, scenario_hour;
     save_path_weather_4d=joinpath(pwd(), "results", "wind_weather_4d.jls"),
 );
+
+#=======================================================================
+WRITE SCENARIOS TO FILE
+=======================================================================#
+write_scenarios_to_file(
+    load_weather_avg_scenarios,
+    scenario_day, scenario_month, scenario_year,
+    "load"
+)
+
+write_scenarios_to_file(
+    solar_weather_avg_scenarios,
+    scenario_day, scenario_month, scenario_year,
+    "solar"
+)
+
+write_scenarios_to_file(
+    wind_weather_avg_scenarios,
+    scenario_day, scenario_month, scenario_year,
+    "wind"
+)
 
 #=======================================================================
 SIMULATE SCENARIOS FOR PENALTY PRICES COMPUTATION

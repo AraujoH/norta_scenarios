@@ -148,7 +148,7 @@ function convert_land_prob_cube_to_data(
     scenario_month::Int,
     scenario_day::Int,
     scenario_hour::Int;
-    save_path_weather_4d::AbstractString
+    save_path_weather_4d::Union{Nothing,AbstractString}=nothing
 )
     # Horizon window
     scenario_timestamp_begin = DateTime(scenario_year, scenario_month, scenario_day, scenario_hour)
@@ -202,7 +202,11 @@ function convert_land_prob_cube_to_data(
     end
 
 
-    serialize(save_path_weather_4d, weather_4d)
-    serialize(replace(save_path_weather_4d, "weather_4d" => "average_weather_3d"), weather_average_3d)
+    # Only save files if a path is provided
+    if save_path_weather_4d !== nothing
+        serialize(save_path_weather_4d, weather_4d)
+        serialize(replace(save_path_weather_4d, "weather_4d" => "average_weather_3d"), weather_average_3d)
+    end
+
     return weather_average_3d, weather_4d
 end

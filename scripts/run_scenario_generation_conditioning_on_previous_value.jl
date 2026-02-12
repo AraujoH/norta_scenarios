@@ -361,84 +361,109 @@ write_scenarios_to_file(
 #=======================================================================
 SIMULATE SCENARIOS FOR PENALTY PRICES COMPUTATION
 =======================================================================#
+# Number of IDM iterations (can be different from number_of_iterations)
+number_of_iterations_IDM = number_of_iterations
+
 idm_seed = 29031990
 if !isempty(intraday_hours)
+    # Pre-allocate 5D arrays for weather data (iterations, IDM_iterations, sheets, scenarios, timesteps)
+    # and 4D arrays for averages (iterations, IDM_iterations, 48, 48)
+    load_weather_5d = Dict()
+    solar_weather_5d = Dict()
+    wind_weather_5d = Dict()
+
+    load_avg_4d = Dict()
+    solar_avg_4d = Dict()
+    wind_avg_4d = Dict()
+
     for hour in intraday_hours
-        # Generate the probability scenarios ...................................
-        idm_load_scenarios, _ = generate_probability_IDM_scenarios_cube!(
-            hour, lp_load,
-            joinpath(pwd(), "results", "load_w_4d.jls"),
-            scenario_length, number_of_scenarios, number_of_iterations, number_of_sheets;
-            seed=idm_seed,
-            save_path_scenarios_4d=joinpath(pwd(), "results", "load_scenarios_4d_idm_hour_$(hour).jls"),
-            save_path_W_4d=joinpath(pwd(), "results", "load_w_4d_idm_hour_$(hour).jls"),
-        )
+        # Allocate 5D: (iterations, IDM_iterations, sheets, scenarios, timesteps)
+        load_weather_5d[hour] = Array{Float64}(undef, number_of_iterations, number_of_iterations_IDM, number_of_sheets, number_of_scenarios, scenario_length)
+        solar_weather_5d[hour] = Array{Float64}(undef, number_of_iterations, number_of_iterations_IDM, number_of_sheets, number_of_scenarios, scenario_length)
+        wind_weather_5d[hour] = Array{Float64}(undef, number_of_iterations, number_of_iterations_IDM, number_of_sheets, number_of_scenarios, scenario_length)
 
-        idm_solar_scenarios, _ = generate_probability_IDM_scenarios_cube!(
-            hour, lp_solar,
-            joinpath(pwd(), "results", "solar_w_4d.jls"),
-            scenario_length, number_of_scenarios, number_of_iterations, number_of_sheets;
-            seed=idm_seed,
-            save_path_scenarios_4d=joinpath(pwd(), "results", "solar_scenarios_4d_idm_hour_$(hour).jls"),
-            save_path_W_4d=joinpath(pwd(), "results", "solar_w_4d_idm_hour_$(hour).jls"),
-        )
+        # Allocate 4D: (iterations, IDM_iterations, timesteps, timesteps)
+        load_avg_4d[hour] = Array{Float64}(undef, number_of_iterations, number_of_iterations_IDM, scenario_length, scenario_length)
+        solar_avg_4d[hour] = Array{Float64}(undef, number_of_iterations, number_of_iterations_IDM, scenario_length, scenario_length)
+        wind_avg_4d[hour] = Array{Float64}(undef, number_of_iterations, number_of_iterations_IDM, scenario_length, scenario_length)
+    end
 
-        idm_wind_scenarios, _ = generate_probability_IDM_scenarios_cube!(
-            hour, lp_wind,
-            joinpath(pwd(), "results", "wind_w_4d.jls"),
-            scenario_length, number_of_scenarios, number_of_iterations, number_of_sheets;
-            seed=idm_seed,
-            save_path_scenarios_4d=joinpath(pwd(), "results", "load_scenarios_4d_idm_hour_$(hour).jls"),
-            save_path_W_4d=joinpath(pwd(), "results", "load_w_4d_idm_hour_$(hour).jls"),
-        )
+    # Loop over each iteration and hour, filling the arrays
+    for iter in 1:number_of_iterations
+        println("Generating IDM scenarios for Iteration $(iter)")
 
-        # Transform the probability scenarios into data scenarios ..............
-        load_weather_IDM_avg_scenarios, load_weather_scenarios =
-            convert_land_prob_cube_to_data(
-                load_data, idm_load_scenarios,
-                scenario_year, scenario_month, scenario_day, scenario_hour;
-                save_path_weather_4d=joinpath(pwd(), "results", "load_IDM_weather_4d_intraday_hour_$(hour).jls"),
+        for hour in intraday_hours
+            println("  Processing intraday hour $(hour)")
+
+            # Generate the probability scenarios ...................................
+            # Don't save intermediate probability files - we'll save consolidated weather arrays at the end
+            idm_load_scenarios, _ = generate_probability_IDM_scenarios_cube!(
+                hour, lp_load,
+                joinpath(pwd(), "results", "load_w_4d.jls"),
+                scenario_length, number_of_scenarios, number_of_iterations_IDM, number_of_sheets;
+                iteration_index=iter,
+                seed=idm_seed
             )
 
-        solar_weather_IDM_avg_scenarios, solar_weather_scenarios =
-            convert_land_prob_cube_to_data(
-                solar_data, idm_solar_scenarios,
-                scenario_year, scenario_month, scenario_day, scenario_hour;
-                save_path_weather_4d=joinpath(pwd(), "results", "solar_IDM_weather_4d_intraday_hour_$(hour).jls"),
+            idm_solar_scenarios, _ = generate_probability_IDM_scenarios_cube!(
+                hour, lp_solar,
+                joinpath(pwd(), "results", "solar_w_4d.jls"),
+                scenario_length, number_of_scenarios, number_of_iterations_IDM, number_of_sheets;
+                iteration_index=iter,
+                seed=idm_seed
             )
 
-        wind_weather_IDM_avg_scenarios, wind_weather_scenarios =
-            convert_land_prob_cube_to_data(
-                wind_data, idm_wind_scenarios,
-                scenario_year, scenario_month, scenario_day, scenario_hour;
-                save_path_weather_4d=joinpath(pwd(), "results", "wind_IDM_weather_4d_intraday_hour_$(hour).jls"),
+            idm_wind_scenarios, _ = generate_probability_IDM_scenarios_cube!(
+                hour, lp_wind,
+                joinpath(pwd(), "results", "wind_w_4d.jls"),
+                scenario_length, number_of_scenarios, number_of_iterations_IDM, number_of_sheets;
+                iteration_index=iter,
+                seed=idm_seed
             )
 
-        #=======================================================================
-        WRITE IDM SCENARIOS TO FILE
-        =======================================================================#
-        write_scenarios_to_file(
-            load_weather_IDM_avg_scenarios,
-            scenario_day, scenario_month, scenario_year,
-            "load";
-            is_idm=true,
-            intraday_hour=hour
-        )
+            # Transform the probability scenarios into data scenarios ..............
+            # Don't save individual files - we'll save consolidated arrays at the end
+            load_weather_IDM_avg_scenarios, load_weather_scenarios =
+                convert_land_prob_cube_to_data(
+                    load_data, idm_load_scenarios,
+                    scenario_year, scenario_month, scenario_day, scenario_hour
+                )
 
-        write_scenarios_to_file(
-            solar_weather_IDM_avg_scenarios,
-            scenario_day, scenario_month, scenario_year,
-            "solar";
-            is_idm=true,
-            intraday_hour=hour
-        )
+            solar_weather_IDM_avg_scenarios, solar_weather_scenarios =
+                convert_land_prob_cube_to_data(
+                    solar_data, idm_solar_scenarios,
+                    scenario_year, scenario_month, scenario_day, scenario_hour
+                )
 
-        write_scenarios_to_file(
-            wind_weather_IDM_avg_scenarios,
-            scenario_day, scenario_month, scenario_year,
-            "wind";
-            is_idm=true,
-            intraday_hour=hour
-        )
+            wind_weather_IDM_avg_scenarios, wind_weather_scenarios =
+                convert_land_prob_cube_to_data(
+                    wind_data, idm_wind_scenarios,
+                    scenario_year, scenario_month, scenario_day, scenario_hour
+                )
+
+            # Store in the 5D and 4D arrays
+            load_weather_5d[hour][iter, :, :, :, :] = load_weather_scenarios
+            solar_weather_5d[hour][iter, :, :, :, :] = solar_weather_scenarios
+            wind_weather_5d[hour][iter, :, :, :, :] = wind_weather_scenarios
+
+            load_avg_4d[hour][iter, :, :, :] = load_weather_IDM_avg_scenarios
+            solar_avg_4d[hour][iter, :, :, :] = solar_weather_IDM_avg_scenarios
+            wind_avg_4d[hour][iter, :, :, :] = wind_weather_IDM_avg_scenarios
+        end
+    end
+
+    # After all loops, save consolidated 5D and 4D arrays (one file per intraday hour)
+    for hour in intraday_hours
+        println("Saving consolidated arrays for intraday hour $(hour)")
+
+        # Save 5D weather arrays
+        serialize(joinpath(pwd(), "results", "load_IDM_weather_5d_hour_$(hour).jls"), load_weather_5d[hour])
+        serialize(joinpath(pwd(), "results", "solar_IDM_weather_5d_hour_$(hour).jls"), solar_weather_5d[hour])
+        serialize(joinpath(pwd(), "results", "wind_IDM_weather_5d_hour_$(hour).jls"), wind_weather_5d[hour])
+
+        # Save 4D average arrays
+        serialize(joinpath(pwd(), "results", "load_IDM_avg_4d_hour_$(hour).jls"), load_avg_4d[hour])
+        serialize(joinpath(pwd(), "results", "solar_IDM_avg_4d_hour_$(hour).jls"), solar_avg_4d[hour])
+        serialize(joinpath(pwd(), "results", "wind_IDM_avg_4d_hour_$(hour).jls"), wind_avg_4d[hour])
     end
 end

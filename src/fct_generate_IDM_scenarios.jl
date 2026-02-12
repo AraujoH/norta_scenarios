@@ -7,8 +7,9 @@
         historical_normalVariate_4d_filepath::String,
         scenario_length::Int,
         number_of_scenarios::Int,
-        number_of_iterations::Int,
+        number_of_iterations_IDM::Int,
         number_of_sheets::Int;
+        iteration_index::Int = 1,
         seed::Int = 12345,
         save_path_scenarios_4d::AbstractString,
         save_path_W_4d::AbstractString,
@@ -32,23 +33,28 @@ realized and only future hours need stochastic simulation.
   variates from non-intraday hours (from previous scenario generation).
 - `scenario_length`: Number of time steps per scenario. Must equal `size(data, 2)`.
 - `number_of_scenarios`: Number of scenarios per sheet.
-- `number_of_iterations`: Number of independent iterations (outermost dimension).
+- `number_of_iterations_IDM`: Number of independent IDM iterations to generate.
+  Can be different from the number of base scenario iterations.
 - `number_of_sheets`: Number of sheets per iteration.
 
 # Keyword Arguments
+- `iteration_index`: Which base iteration to use for conditioning the past values
+  (hours 1 to intraday_hour). All IDM iterations will be conditioned on this same
+  iteration. Default is 1.
 - `seed`: Master random seed for reproducibility. Default is 12345.
 - `save_path_scenarios_4d`: File path for serializing the 4D scenario array.
 - `save_path_W_4d`: File path for serializing the 4D normal variate array.
 
 # Returns
-- `scenarios_4d`: 4D array `(number_of_iterations, number_of_sheets, 
+- `scenarios_4d`: 4D array `(number_of_iterations_IDM, number_of_sheets,
   number_of_scenarios, scenario_length)` containing generated scenarios.
-- `W_4d`: 4D array `(number_of_iterations, number_of_sheets, scenario_length,
+- `W_4d`: 4D array `(number_of_iterations_IDM, number_of_sheets, scenario_length,
   number_of_scenarios)` containing all normal variates used in generation.
 
 # Behavior
 - Loads historical normal variates and extracts diagonal elements for hours
-  1 to `intraday_hour`, conditioning scenarios on these realized values.
+  1 to `intraday_hour` from the specified `iteration_index`,
+  conditioning all IDM scenarios on these realized values.
 - Generates fresh random normal variates for hours `intraday_hour + 1` to `scenario_length`.
 - Applies Gaussian copula transformation with empirical marginals from `data`.
 - Automatically handles constant columns (zero variance) by excluding from
@@ -60,9 +66,10 @@ realized and only future hours need stochastic simulation.
 # # Generate base scenarios and save normal variates
 # generate_probability_scenarios_cube!(...)
 
-# # Later, generate intraday scenarios conditioned on hour 12
+# # Later, generate intraday scenarios conditioned on hour 12 from iteration 5
 # scenarios_4d, W_4d = generate_probability_IDM_scenarios_cube!(
-#     12, data, "historical_W_4d.jls", 48, 48, 10, 50;
+#     12, data, "historical_W_4d.jls", 48, 48, 100, 50;
+#     iteration_index = 5,
 #     save_path_scenarios_4d = "idm_scenarios_4d.jls",
 #     save_path_W_4d = "idm_W_4d.jls"
 # )
@@ -79,11 +86,12 @@ function generate_probability_IDM_scenarios_cube!(
     historical_normalVariate_4d_filepath::String,
     scenario_length::Int,
     number_of_scenarios::Int,
-    number_of_iterations::Int,
+    number_of_iterations_IDM::Int,
     number_of_sheets::Int;
+    iteration_index::Int=1,
     seed::Int=12345,
-    save_path_scenarios_4d::AbstractString,
-    save_path_W_4d::AbstractString,
+    save_path_scenarios_4d::Union{Nothing,AbstractString}=nothing,
+    save_path_W_4d::Union{Nothing,AbstractString}=nothing,
 )
     # Distributions and randomness..............................................
     d = Normal(0, 1)
@@ -120,7 +128,7 @@ function generate_probability_IDM_scenarios_cube!(
     M = F.L
 
     # Allocate outputs (full size)..............................................
-    Nit = number_of_iterations
+    Nit = number_of_iterations_IDM
     nsheets = number_of_sheets
     Nscen = number_of_scenarios
 
@@ -149,9 +157,9 @@ function generate_probability_IDM_scenarios_cube!(
             sheet_seed = rand(rng_master, Int)
             rng = MersenneTwister(sheet_seed)
 
-            # Fetch the Ws from hour 1 to intraday hour from the 
-            # precomputed 4D array
-            W_4d[i, s, 1:intraday_hour, :] .= diag(historical_w_4d[i, s, 1:intraday_hour, 1:intraday_hour])
+            # Fetch the Ws from hour 1 to intraday hour from the
+            # precomputed 4D array, using the specified iteration index
+            W_4d[i, s, 1:intraday_hour, :] .= diag(historical_w_4d[iteration_index, s, 1:intraday_hour, 1:intraday_hour])
 
             # Build the rest of W_4d for this (i, s) with new random values. 
             # This time we do not fix the past values.
@@ -186,8 +194,13 @@ function generate_probability_IDM_scenarios_cube!(
         end
     end
 
-    serialize(save_path_W_4d, W_4d)
-    serialize(save_path_scenarios_4d, scenarios_4d)
+    # Only save files if paths are provided
+    if save_path_W_4d !== nothing
+        serialize(save_path_W_4d, W_4d)
+    end
+    if save_path_scenarios_4d !== nothing
+        serialize(save_path_scenarios_4d, scenarios_4d)
+    end
 
     return scenarios_4d, W_4d
 end

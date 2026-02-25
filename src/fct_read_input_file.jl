@@ -1,15 +1,29 @@
-function parse_intraday_hours(s::AbstractString)
+function parse_intraday_hours(s::AbstractString, max_hour::Int=48)
     s = strip(uppercase(s))
 
     if s == "N"
         return Int[]
     end
 
-    try
-        return parse.(Int, split(s, ","))
-    catch
-        error("Invalid input. Use a comma-separated list of integers or 'N'.")
+    if s == "ALL"
+        return collect(1:max_hour)
     end
+
+    hours = Int[]
+    for token in split(s, ",")
+        token = strip(token)
+        isempty(token) && continue
+        if occursin("-", token)
+            parts = split(token, "-")
+            length(parts) == 2 || error("Invalid range '$token'. Use 'a-b' format.")
+            a, b = parse(Int, strip(parts[1])), parse(Int, strip(parts[2]))
+            a <= b || error("Invalid range '$token': start must be ≤ end.")
+            append!(hours, a:b)
+        else
+            push!(hours, parse(Int, token))
+        end
+    end
+    return hours
 end
 
 
@@ -37,14 +51,15 @@ function read_input_file(filepath)
     close(f)
 
     # Return lines
+    scenario_length = parse(Int, lines[2])
     return (
         # Data type - load, solar, wind
         strip(lowercase(lines[1])),
         # Scenario length
-        parse(Int, lines[2]),
+        scenario_length,
         # Scenario paths/number of scenarios
         parse(Int, lines[3]),
-        # 
+        #
         parse(Int, lines[4]),
         #
         parse(Int, lines[5]),
@@ -57,7 +72,7 @@ function read_input_file(filepath)
         #
         parse(Int, lines[9]),
         #
-        parse_intraday_hours(lines[10]),
+        parse_intraday_hours(lines[10], scenario_length),
         # 
         strip(lines[11]),
         #

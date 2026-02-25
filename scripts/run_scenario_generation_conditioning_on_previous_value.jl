@@ -97,6 +97,7 @@ scenario_length,
 number_of_scenarios,
 number_of_sheets,
 number_of_iterations,
+number_of_iterations_IDM,
 scenario_hour,
 scenario_day,
 scenario_month,
@@ -361,9 +362,6 @@ write_scenarios_to_file(
 #=======================================================================
 SIMULATE SCENARIOS FOR PENALTY PRICES COMPUTATION
 =======================================================================#
-# Number of IDM iterations (can be different from number_of_iterations)
-number_of_iterations_IDM = number_of_iterations
-
 idm_seed = 29031990
 if !isempty(intraday_hours)
     # Pre-allocate 5D arrays for weather data (iterations, IDM_iterations, sheets, scenarios, timesteps)

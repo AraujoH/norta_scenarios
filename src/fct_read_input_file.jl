@@ -61,9 +61,9 @@ function read_input_file(filepath)
         parse(Int, lines[3]),
         #
         parse(Int, lines[4]),
-        #
+        # N. of iterations
         parse(Int, lines[5]),
-        #
+        # N. of IDM iterations
         parse(Int, lines[6]),
         #
         parse(Int, lines[7]),
@@ -72,9 +72,9 @@ function read_input_file(filepath)
         #
         parse(Int, lines[9]),
         #
-        parse_intraday_hours(lines[10], scenario_length),
-        # 
-        strip(lines[11]),
+        parse(Int, lines[10]),
+        #
+        parse_intraday_hours(lines[11], scenario_length),
         #
         strip(lines[12]),
         #
@@ -92,7 +92,9 @@ function read_input_file(filepath)
         #
         strip(lines[19]),
         #
-        parse(Int, lines[20]))
+        strip(lines[20]),
+        #
+        parse(Int, lines[21]))
 end
 
 

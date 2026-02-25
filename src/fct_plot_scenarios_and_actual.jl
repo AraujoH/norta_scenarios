@@ -74,6 +74,7 @@ function plot_scenarios_and_actual(hist, scenarios, actuals, type, scenario_year
     # Save plot
     # Save plot
     filename = string(scenario_year)*"_"*string(scenario_month)*"_"*string(scenario_day)*"_"*string(type)*".png"
-    filepath = mkpath(plotsdir("scnenarios_and_historical_data"))
+    filepath = mkpath(plotsdir("scenarios_and_historical_data"))
     png(joinpath(filepath, filename))
 end
+

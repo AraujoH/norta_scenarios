@@ -113,6 +113,10 @@ function generate_probability_IDM_scenarios_cube!(
     x = x0[:, keep_inds]
     T = size(x, 2)
 
+    # Map intraday_hour from the full T0 index space to the reduced T space:
+    # count how many non-constant columns fall at or before intraday_hour.
+    intraday_hour_red = sum(keep_inds .<= intraday_hour)
+
     if T == 0
         error("All columns are constant. Cannot generate scenarios.")
     end
@@ -159,14 +163,14 @@ function generate_probability_IDM_scenarios_cube!(
 
             # Fetch the Ws from hour 1 to intraday hour from the
             # precomputed 4D array, using the specified iteration index
-            W_4d[i, s, 1:intraday_hour, :] .= diag(historical_w_4d[iteration_index, s, 1:intraday_hour, 1:intraday_hour])
+            W_4d[i, s, 1:intraday_hour_red, :] .= diag(historical_w_4d[iteration_index, s, 1:intraday_hour_red, 1:intraday_hour_red])
 
-            # Build the rest of W_4d for this (i, s) with new random values. 
+            # Build the rest of W_4d for this (i, s) with new random values.
             # This time we do not fix the past values.
-            W_new = rand(rng, d, (T - intraday_hour, Nscen))
+            W_new = rand(rng, d, (T - intraday_hour_red, Nscen))
 
             # Fill in the rest of W_4d
-            W_4d[i, s, intraday_hour+1:end, :] .= W_new
+            W_4d[i, s, intraday_hour_red+1:end, :] .= W_new
 
             # Build scenarios for this sheet
             for n in 1:Nscen

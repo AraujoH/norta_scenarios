@@ -464,4 +464,28 @@ if !isempty(intraday_hours)
         serialize(joinpath(pwd(), "results", "solar_IDM_avg_4d_hour_$(hour).jls"), solar_avg_4d[hour])
         serialize(joinpath(pwd(), "results", "wind_IDM_avg_4d_hour_$(hour).jls"), wind_avg_4d[hour])
     end
+
+    # Zip 5D files by type and delete originals
+    GC.gc()  # release file handles from serialize() calls before zipping
+    let results_dir = joinpath(pwd(), "results")
+        for type in ["load", "solar", "wind"]
+            files = filter(f -> startswith(f, "$(type)_IDM_weather_5d") && endswith(f, ".jls"),
+                           readdir(results_dir))
+            files_full = joinpath.(results_dir, files)
+            if !isempty(files_full)
+                zip_path = joinpath(results_dir, "$(type)_IDM_weather_5d.zip")
+                println("Zipping $(length(files_full)) files into $(zip_path)")
+                file_list = join(["\"$f\"" for f in files_full], ",")
+                ok = success(`powershell -Command "Compress-Archive -Path $file_list -DestinationPath \"$zip_path\" -Force"`)
+                if ok && isfile(zip_path) && filesize(zip_path) > 0
+                    for f in files_full
+                        rm(f)
+                    end
+                    println("Deleted original 5D files for type: $(type)")
+                else
+                    println("WARNING: zip failed for type $(type) — original files NOT deleted")
+                end
+            end
+        end
+    end
 end

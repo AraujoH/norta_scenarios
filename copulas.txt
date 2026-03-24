@@ -6,7 +6,7 @@ SCENARIO LENGTH     : 48
 SCENARIO PATHS      : 48
 SCENARIO SHEETS     : 50            # 1, 2, ..., 10, INT
 N. OF ITERATIONS    : 10            # Number of iterations in the Intraday code
-N. OF IDM ITER.     : 3            # Number of IDM iterations (independent from N. OF ITERATIONS)
+N. OF IDM ITER.     : 10            # Number of IDM iterations (independent from N. OF ITERATIONS)
 SCENARIO HOUR       : 00            # 0, 1, 2, ..., 23
 SCENARIO DAY        : 18            # Format DD
 SCENARIO MONTH      : 07            # Format MM

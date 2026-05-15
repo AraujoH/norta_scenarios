@@ -115,6 +115,7 @@ function generate_probability_IDM_scenarios_cube!(
 
     # Map intraday_hour from the full T0 index space to the reduced T space:
     # count how many non-constant columns fall at or before intraday_hour.
+    # "_red" for reduced.
     intraday_hour_red = sum(keep_inds .<= intraday_hour)
 
     if T == 0

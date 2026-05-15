@@ -363,6 +363,8 @@ write_scenarios_to_file(
 SIMULATE SCENARIOS FOR PENALTY PRICES COMPUTATION
 =======================================================================#
 idm_seed = 29031990
+#intraday_hours = [6, 12, 18]
+
 if !isempty(intraday_hours)
     # Pre-allocate 5D arrays for weather data (iterations, IDM_iterations, sheets, scenarios, timesteps)
     # and 4D arrays for averages (iterations, IDM_iterations, 48, 48)

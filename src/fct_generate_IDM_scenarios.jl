@@ -30,7 +30,8 @@ realized and only future hours need stochastic simulation.
 - `data`: Historical observations matrix `(N, T)` where `N` is sample size and
   `T` is scenario length.
 - `historical_normalVariate_4d_filepath`: Path to serialized 4D array of normal
-  variates from non-intraday hours (from previous scenario generation).
+  variates from non-intraday hours (from previous scenario generation). Pass
+  `nothing` when `intraday_hour == 0` (all time steps are generated fresh).
 - `scenario_length`: Number of time steps per scenario. Must equal `size(data, 2)`.
 - `number_of_scenarios`: Number of scenarios per sheet.
 - `number_of_iterations_IDM`: Number of independent IDM iterations to generate.
@@ -83,7 +84,7 @@ realized and only future hours need stochastic simulation.
 function generate_probability_IDM_scenarios_cube!(
     intraday_hour::Int,
     data::AbstractMatrix{<:Real},
-    historical_normalVariate_4d_filepath::String,
+    historical_normalVariate_4d_filepath::Union{Nothing,String},
     scenario_length::Int,
     number_of_scenarios::Int,
     number_of_iterations_IDM::Int,
@@ -145,8 +146,10 @@ function generate_probability_IDM_scenarios_cube!(
     # W_4d[i, s, t, n]
     W_4d = Array{Float64}(undef, Nit, nsheets, T, Nscen)
 
-    # Historical variates from the non-intraday hours
-    historical_w_4d = deserialize(historical_normalVariate_4d_filepath)
+    # Historical variates only needed when past hours are conditioned on
+    if intraday_hour_red > 0
+        historical_w_4d = deserialize(historical_normalVariate_4d_filepath)
+    end
 
     # Work buffers (reused)
     # W = Matrix{Float64}(undef, T, Nscen)
@@ -164,7 +167,9 @@ function generate_probability_IDM_scenarios_cube!(
 
             # Fetch the Ws from hour 1 to intraday hour from the
             # precomputed 4D array, using the specified iteration index
-            W_4d[i, s, 1:intraday_hour_red, :] .= diag(historical_w_4d[iteration_index, s, 1:intraday_hour_red, 1:intraday_hour_red])
+            if intraday_hour_red > 0
+                W_4d[i, s, 1:intraday_hour_red, :] .= diag(historical_w_4d[iteration_index, s, 1:intraday_hour_red, 1:intraday_hour_red])
+            end
 
             # Build the rest of W_4d for this (i, s) with new random values.
             # This time we do not fix the past values.

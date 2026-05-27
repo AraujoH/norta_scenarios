@@ -164,6 +164,7 @@ function generate_probability_scenarios_cube!(
     seed::Int = 12345,
     save_path_scenarios_4d::AbstractString,
     save_path_W_4d::AbstractString,
+    type::String
 )
     d = Normal(0, 1)
     rng_master = MersenneTwister(seed)
@@ -260,6 +261,8 @@ function generate_probability_scenarios_cube!(
             # Store scenarios for this sheet
             @views scenarios_4d[i, s, :, :] .= Y_full
         end
+        println("=================================================")
+        @info "Iter. $i $type done - Market Clearing"
     end
 
     serialize(save_path_W_4d, W_4d)

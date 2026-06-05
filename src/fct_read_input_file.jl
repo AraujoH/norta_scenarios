@@ -57,15 +57,15 @@ function read_input_file(filepath)
         strip(lowercase(lines[1])),
         # Scenario length
         scenario_length,
-        # Scenario paths/number of scenarios
+        # Scenario paths/number of scenarios (base generation)
         parse(Int, lines[3]),
-        #
+        # Scenario paths for IDM generation (independent of base)
         parse(Int, lines[4]),
-        # N. of iterations
+        # N. of sheets
         parse(Int, lines[5]),
-        # N. of IDM iterations
+        # N. of iterations
         parse(Int, lines[6]),
-        #
+        # N. of IDM iterations
         parse(Int, lines[7]),
         #
         parse(Int, lines[8]),
@@ -74,9 +74,9 @@ function read_input_file(filepath)
         #
         parse(Int, lines[10]),
         #
-        parse_intraday_hours(lines[11], scenario_length),
+        parse(Int, lines[11]),
         #
-        strip(lines[12]),
+        parse_intraday_hours(lines[12], scenario_length),
         #
         strip(lines[13]),
         #
@@ -94,7 +94,9 @@ function read_input_file(filepath)
         #
         strip(lines[20]),
         #
-        parse(Int, lines[21]))
+        strip(lines[21]),
+        #
+        parse(Int, lines[22]))
 end
 
 

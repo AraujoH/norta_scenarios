@@ -4,15 +4,16 @@ XXXXXXXXXXXXXXXXXXXX
 DATA TYPE           : load          # LOAD, SOLAR, WIND
 SCENARIO LENGTH     : 48
 SCENARIO PATHS      : 48
-SCENARIO SHEETS     : 50            # 1, 2, ..., 10, INT
-N. OF ITERATIONS    : 10            # Number of iterations in the Intraday code
-N. OF IDM ITER.     : 60            # Number of IDM iterations (independent from N. OF ITERATIONS)
-SCENARIO HOUR       : 00            # 0, 1, 2, ..., 23
-SCENARIO DAY        : 18            # Format DD
-SCENARIO MONTH      : 07            # Format MM
-SCENARIO YEAR       : 2018          # Format YYY
-INTRADAY HOURS      : 0                                                   # Hours: comma list (1,6,12), range (1-24), 'all' (1 thru SCENARIO LENGTH), or N (none)
-READ LOCALLY        : 0             # 0: Locally, 1: fetch from AWS bucket
+SCENARIO PATHS IDM  : 1000           # Scenario paths for IDM generation (independent of base)
+SCENARIO SHEETS     : 1              # 1, 2, ..., 10, INT
+N. OF ITERATIONS    : 3              # Number of iterations in the Intraday code
+N. OF IDM ITER.     : 3              # Number of IDM iterations (independent from N. OF ITERATIONS)
+SCENARIO HOUR       : 00             # 0, 1, 2, ..., 23
+SCENARIO DAY        : 18             # Format DD
+SCENARIO MONTH      : 07             # Format MM
+SCENARIO YEAR       : 2018           # Format YYY
+INTRADAY HOURS      : 6,12,18      # Hours: comma list (1,6,12), range (1-24), 'all' (1 thru SCENARIO LENGTH), or N (none)
+READ LOCALLY        : 0              # 0: Locally, 1: fetch from AWS bucket
 HISTORICAL LOAD     : ercot_BA_load_actuals_2018.h5
 FORECAST LOAD       : ercot_BA_load_forecast_day_ahead_2018.h5
 HISTORICAL SOLAR    : ercot_BA_solar_actuals_Existing_2018.h5

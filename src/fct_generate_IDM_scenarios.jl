@@ -168,7 +168,7 @@ function generate_probability_IDM_scenarios_cube!(
             # Fetch the Ws from hour 1 to intraday hour from the
             # precomputed 4D array, using the specified iteration index
             if intraday_hour_red > 0
-                W_4d[i, s, 1:intraday_hour_red, :] .= diag(historical_w_4d[iteration_index, s, 1:intraday_hour_red, 1:intraday_hour_red])
+                W_4d[i, s, 1:intraday_hour_red, :] .= historical_w_4d[iteration_index, s, 1:intraday_hour_red, end]
             end
 
             # Build the rest of W_4d for this (i, s) with new random values.

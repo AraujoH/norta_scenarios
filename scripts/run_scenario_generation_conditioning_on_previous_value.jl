@@ -351,19 +351,22 @@ WRITE SCENARIOS TO FILE
 write_scenarios_to_file(
     load_weather_avg_scenarios,
     scenario_day, scenario_month, scenario_year,
-    "load"
+    "load";
+    filepath=results_dir
 )
 
 write_scenarios_to_file(
     solar_weather_avg_scenarios,
     scenario_day, scenario_month, scenario_year,
-    "solar"
+    "solar";
+    filepath=results_dir
 )
 
 write_scenarios_to_file(
     wind_weather_avg_scenarios,
     scenario_day, scenario_month, scenario_year,
-    "wind"
+    "wind";
+    filepath=results_dir
 )
 
 #=======================================================================

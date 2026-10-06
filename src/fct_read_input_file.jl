@@ -1,6 +1,11 @@
 function parse_intraday_hours(s::AbstractString, max_hour::Int=48)
     s = strip(uppercase(s))
 
+    # Accept an optional bracketed list, e.g. "[0, 6, 12, 18]"
+    if startswith(s, "[") && endswith(s, "]")
+        s = strip(s[nextind(s, 1):prevind(s, lastindex(s))])
+    end
+
     if s == "N"
         return Int[]
     end
@@ -51,6 +56,11 @@ function read_input_file(filepath)
     close(f)
 
     # Return lines
+    length(lines) == 22 || error(
+        "Expected 22 parameter lines in '$filepath', found $(length(lines)). " *
+        "A parameter line is missing or duplicated; the entries after it would be " *
+        "read into the wrong fields.")
+
     scenario_length = parse(Int, lines[2])
     return (
         # Data type - load, solar, wind

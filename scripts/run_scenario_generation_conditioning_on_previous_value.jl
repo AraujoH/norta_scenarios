@@ -113,7 +113,8 @@ forecast_2da_solar,
 historical_wind,
 forecastd_da_wind,
 forecast_2da_wind,
-write_percentile = read_input_file(input_file_path);
+write_percentile,
+idm_seed_by_iter_hour = read_input_file(input_file_path);
 
 results_dir = mkpath(joinpath(pwd(), "results",
     "$(number_of_iterations)outerIter_$(number_of_iterations_IDM)idmIter_$(number_of_scenarios)scenarioPath_$(number_of_scenarios_idm)idmScenarioPath"))
@@ -405,6 +406,12 @@ if !isempty(intraday_hours)
         for hour in intraday_hours
             println("  Processing intraday hour $(hour)")
 
+            # IDM seed shared by load, solar and wind for this (iter, hour).
+            # Flag off: original seeding (hour 0 varies by iter, every other hour reuses idm_seed).
+            # Flag on: idm_seed + 1000*hour + iter. At hour 0 this is idm_seed + iter, identical
+            # to the original, so the hour-0 (DAM) files are unchanged.
+            idm_seed_iter_hour = idm_seed_by_iter_hour == 1 ? idm_seed + 1000 * hour + iter : (hour == 0 ? idm_seed + iter : idm_seed)
+
             # Generate the probability scenarios ...................................
             # Don't save intermediate probability files - we'll save consolidated weather arrays at the end
             idm_load_scenarios, _ = generate_probability_IDM_scenarios_cube!(
@@ -412,7 +419,7 @@ if !isempty(intraday_hours)
                 joinpath(results_dir,"load_w_4d.jls"),
                 scenario_length, number_of_scenarios_idm, number_of_iterations_IDM, number_of_sheets;
                 iteration_index=iter,
-                seed=(hour == 0 ? idm_seed + iter : idm_seed)
+                seed=idm_seed_iter_hour
             )
 
             idm_solar_scenarios, _ = generate_probability_IDM_scenarios_cube!(
@@ -420,7 +427,7 @@ if !isempty(intraday_hours)
                 joinpath(results_dir,"solar_w_4d.jls"),
                 scenario_length, number_of_scenarios_idm, number_of_iterations_IDM, number_of_sheets;
                 iteration_index=iter,
-                seed=(hour == 0 ? idm_seed + iter : idm_seed)
+                seed=idm_seed_iter_hour
             )
 
             idm_wind_scenarios, _ = generate_probability_IDM_scenarios_cube!(
@@ -428,7 +435,7 @@ if !isempty(intraday_hours)
                 joinpath(results_dir,"wind_w_4d.jls"),
                 scenario_length, number_of_scenarios_idm, number_of_iterations_IDM, number_of_sheets;
                 iteration_index=iter,
-                seed=(hour == 0 ? idm_seed + iter : idm_seed)
+                seed=idm_seed_iter_hour
             )
 
             # Transform the probability scenarios into data scenarios ..............

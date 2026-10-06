@@ -4,10 +4,10 @@ XXXXXXXXXXXXXXXXXXXX
 DATA TYPE           : load          # LOAD, SOLAR, WIND
 SCENARIO LENGTH     : 48
 SCENARIO PATHS      : 48
-SCENARIO PATHS IDM  : 48            # Scenario paths for IDM generation (independent of base)
+SCENARIO PATHS IDM  : 50            # Scenario paths for IDM generation (independent of base)
 SCENARIO SHEETS     : 50            # 1, 2, ..., 10, INT
 N. OF ITERATIONS    : 10            # Number of iterations in the Intraday code
-N. OF IDM ITER.     : 40            # Number of IDM iterations (independent from N. OF ITERATIONS)
+N. OF IDM ITER.     :  1            # Number of IDM iterations (independent from N. OF ITERATIONS)
 SCENARIO HOUR       : 00            # 0, 1, 2, ..., 23
 SCENARIO DAY        : 18            # Format DD
 SCENARIO MONTH      : 07            # Format MM
@@ -23,3 +23,4 @@ HISTORICAL WIND     : ercot_BA_wind_actuals_Existing_2018.h5
 FORECAST WIND DA    : ercot_BA_wind_forecast_day_ahead_existing_2018.h5
 FORECAST WIND 2DA   : ercot_BA_wind_forecast_2_day_ahead_existing_2018.h5
 WRITE PERCENTILE    : 1
+IDM SEED ITER HOUR  : 1             # 1: IDM seed = idm_seed + 1000*hour + iter (hour 0 unchanged); 0: original seeding (hour 0 by iter, other hours fixed)

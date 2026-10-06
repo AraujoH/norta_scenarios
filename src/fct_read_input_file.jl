@@ -56,8 +56,8 @@ function read_input_file(filepath)
     close(f)
 
     # Return lines
-    length(lines) == 22 || error(
-        "Expected 22 parameter lines in '$filepath', found $(length(lines)). " *
+    length(lines) in (22, 23) || error(
+        "Expected 22 or 23 parameter lines in '$filepath', found $(length(lines)). " *
         "A parameter line is missing or duplicated; the entries after it would be " *
         "read into the wrong fields.")
 
@@ -106,7 +106,9 @@ function read_input_file(filepath)
         #
         strip(lines[21]),
         #
-        parse(Int, lines[22]))
+        parse(Int, lines[22]),
+        # IDM seed varies by (iteration, hour): 1 on, 0 off. Optional 23rd line, default 0
+        length(lines) >= 23 ? parse(Int, lines[23]) : 0)
 end
 
 

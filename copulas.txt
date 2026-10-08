@@ -5,7 +5,7 @@ DATA TYPE           : load          # LOAD, SOLAR, WIND
 SCENARIO LENGTH     : 48
 SCENARIO PATHS      : 48
 SCENARIO PATHS IDM  : 50            # Scenario paths for IDM generation (independent of base)
-SCENARIO SHEETS     : 50            # 1, 2, ..., 10, INT
+SCENARIO SHEETS     : 01            # 1, 2, ..., 10, INT
 N. OF ITERATIONS    : 10            # Number of iterations in the Intraday code
 N. OF IDM ITER.     :  1            # Number of IDM iterations (independent from N. OF ITERATIONS)
 SCENARIO HOUR       : 00            # 0, 1, 2, ..., 23
